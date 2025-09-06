@@ -360,13 +360,58 @@ def vlookup(lookup_value, table_array, col_index, exact_match=True):
 
 def get_range(range_ref: str, cells: dict) -> list:
     """Extract values from a range reference."""
+    import re
+    
     # Parse range reference and return list of values
     sheet_name, range_part = range_ref.split('!')
     start_cell, end_cell = range_part.split(':')
     
-    # Simple implementation - would need enhancement for production
+    def parse_cell(cell_ref: str) -> tuple:
+        """Parse column and row from cell reference."""
+        match = re.match(r'^([A-Z]+)(d+)$', cell_ref)
+        if not match:
+            raise ValueError(f'Invalid cell reference: {cell_ref}')
+        return match.group(1), int(match.group(2))
+    
+    def column_to_number(col: str) -> int:
+        """Convert column letters to number (A=1, B=2, ..., Z=26, AA=27, etc.)"""
+        num = 0
+        for char in col:
+            num = num * 26 + (ord(char) - 64)
+        return num
+    
+    def number_to_column(num: int) -> str:
+        """Convert number to column letters."""
+        col = ''
+        while num > 0:
+            num -= 1
+            col = chr(65 + (num % 26)) + col
+            num = num // 26
+        return col
+    
+    start_col, start_row = parse_cell(start_cell)
+    end_col, end_row = parse_cell(end_cell)
+    
+    start_col_num = column_to_number(start_col)
+    end_col_num = column_to_number(end_col)
+    
     result = []
-    # TODO: Implement proper range extraction
+    
+    # Iterate through the range and collect values
+    for row in range(start_row, end_row + 1):
+        row_values = []
+        for col_num in range(start_col_num, end_col_num + 1):
+            col = number_to_column(col_num)
+            cell_key = f'{sheet_name}!{col}{row}'
+            row_values.append(cells.get(cell_key))
+        
+        # For single column ranges, extend with individual values
+        # For multi-column ranges, append row arrays
+        if start_col_num == end_col_num:
+            result.extend(row_values)
+        else:
+            result.append(row_values)
+    
     return result`;
   }
 

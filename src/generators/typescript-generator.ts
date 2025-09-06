@@ -372,9 +372,58 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
   const [sheetName, range] = rangeRef.split('!');
   const [start, end] = range.split(':');
   
-  // Simple implementation - would need enhancement for production
+  // Parse column and row from cell references
+  const parseCell = (cellRef: string): [string, number] => {
+    const match = cellRef.match(/^([A-Z]+)(\\d+)$/);
+    if (!match) throw new Error('Invalid cell reference: ' + cellRef);
+    return [match[1], parseInt(match[2])];
+  };
+  
+  // Convert column letters to number (A=1, B=2, ..., Z=26, AA=27, etc.)
+  const columnToNumber = (col: string): number => {
+    let num = 0;
+    for (let i = 0; i < col.length; i++) {
+      num = num * 26 + (col.charCodeAt(i) - 64);
+    }
+    return num;
+  };
+  
+  // Convert number to column letters
+  const numberToColumn = (num: number): string => {
+    let col = '';
+    while (num > 0) {
+      num--;
+      col = String.fromCharCode(65 + (num % 26)) + col;
+      num = Math.floor(num / 26);
+    }
+    return col;
+  };
+  
+  const [startCol, startRow] = parseCell(start);
+  const [endCol, endRow] = parseCell(end);
+  
+  const startColNum = columnToNumber(startCol);
+  const endColNum = columnToNumber(endCol);
+  
   const result: any[] = [];
-  // TODO: Implement proper range extraction
+  
+  // Iterate through the range and collect values
+  for (let row = startRow; row <= endRow; row++) {
+    const rowValues: any[] = [];
+    for (let colNum = startColNum; colNum <= endColNum; colNum++) {
+      const col = numberToColumn(colNum);
+      const cellKey = sheetName + '!' + col + row;
+      rowValues.push(cells[cellKey] ?? null);
+    }
+    // For single column ranges, push individual values
+    // For multi-column ranges, push row arrays
+    if (startColNum === endColNum) {
+      result.push(...rowValues);
+    } else {
+      result.push(rowValues);
+    }
+  }
+  
   return result;
 }`;
   }
