@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import { SheetToCodeConverter } from '../index.js';
+import { SheetConfig } from '../types/index.js';
+import { existsSync, writeFileSync, readFileSync } from 'fs';
+import path from 'path';
+
+const program = new Command();
+
+program
+  .name('sheets-to-code')
+  .description('Convert Google Sheets to TypeScript or Python code')
+  .version('1.0.0');
+
+program
+  .command('convert')
+  .description('Convert a Google Sheets document to code')
+  .requiredOption('-u, --url <url>', 'Google Sheets URL')
+  .requiredOption('-i, --input-tabs <tabs>', 'Comma-separated list of input tab names')
+  .requiredOption('-o, --output-tabs <tabs>', 'Comma-separated list of output tab names')
+  .option('-l, --language <language>', 'Output language (typescript|python)', 'typescript')
+  .option('-f, --output-file <file>', 'Output file path')
+  .option('--config <file>', 'Path to configuration file')
+  .option('--credentials <file>', 'Path to Google API credentials JSON file', './credentials.json')
+  .option('--verbose', 'Enable verbose output')
+  .action(async (options) => {
+    try {
+      await convertSheet(options);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('setup')
+  .description('Setup Google Sheets API credentials')
+  .action(() => {
+    console.log('Google Sheets API Setup');
+    console.log('=====================');
+    console.log();
+    console.log('1. Go to the Google Cloud Console: https://console.cloud.google.com/');
+    console.log('2. Create a new project or select an existing one');
+    console.log('3. Enable the Google Sheets API');
+    console.log('4. Create credentials (Service Account or OAuth2)');
+    console.log('5. Download the credentials JSON file');
+    console.log('6. Save it as "credentials.json" in your project root');
+    console.log();
+    console.log('For detailed instructions, visit:');
+    console.log('https://developers.google.com/sheets/api/quickstart/nodejs');
+  });
+
+program
+  .command('validate')
+  .description('Validate a configuration file')
+  .requiredOption('-c, --config <file>', 'Path to configuration file')
+  .action(async (options) => {
+    try {
+      const config = loadConfig(options.config);
+      console.log('Configuration is valid:');
+      console.log(JSON.stringify(config, null, 2));
+    } catch (error) {
+      console.error('Configuration error:', error.message);
+      process.exit(1);
+    }
+  });
+
+async function convertSheet(options: any) {
+  if (options.verbose) {
+    console.log('Starting Google Sheets conversion...');
+  }
+
+  let config: SheetConfig;
+
+  if (options.config) {
+    config = loadConfig(options.config);
+  } else {
+    config = {
+      spreadsheetUrl: options.url,
+      inputTabs: options.inputTabs.split(',').map((tab: string) => tab.trim()),
+      outputTabs: options.outputTabs.split(',').map((tab: string) => tab.trim()),
+      outputLanguage: options.language as 'typescript' | 'python'
+    };
+  }
+
+  // Validate configuration
+  validateConfig(config);
+
+  // Check credentials file
+  if (!existsSync(options.credentials)) {
+    throw new Error(`Credentials file not found: ${options.credentials}`);
+  }
+
+  if (options.verbose) {
+    console.log('Configuration:', JSON.stringify(config, null, 2));
+    console.log('Credentials file:', options.credentials);
+  }
+
+  // Convert the sheet
+  const converter = new SheetToCodeConverter(config);
+  
+  if (options.verbose) {
+    console.log('Fetching sheet data...');
+  }
+  
+  const generatedCode = await converter.convert();
+
+  // Determine output file
+  let outputFile = options.outputFile;
+  if (!outputFile) {
+    const extension = config.outputLanguage === 'typescript' ? '.ts' : '.py';
+    outputFile = `generated-spreadsheet${extension}`;
+  }
+
+  // Write output
+  writeFileSync(outputFile, generatedCode, 'utf8');
+  
+  console.log(`✅ Successfully generated code: ${outputFile}`);
+  
+  if (options.verbose) {
+    console.log(`Output language: ${config.outputLanguage}`);
+    console.log(`Input tabs: ${config.inputTabs.join(', ')}`);
+    console.log(`Output tabs: ${config.outputTabs.join(', ')}`);
+    console.log(`Code length: ${generatedCode.length} characters`);
+  }
+}
+
+function loadConfig(configPath: string): SheetConfig {
+  if (!existsSync(configPath)) {
+    throw new Error(`Configuration file not found: ${configPath}`);
+  }
+
+  try {
+    const configContent = readFileSync(configPath, 'utf8');
+    const config = JSON.parse(configContent);
+    
+    return {
+      spreadsheetUrl: config.spreadsheetUrl,
+      inputTabs: config.inputTabs || [],
+      outputTabs: config.outputTabs || [],
+      outputLanguage: config.outputLanguage || 'typescript'
+    };
+  } catch (error) {
+    throw new Error(`Invalid configuration file: ${error.message}`);
+  }
+}
+
+function validateConfig(config: SheetConfig) {
+  if (!config.spreadsheetUrl) {
+    throw new Error('Missing spreadsheet URL');
+  }
+
+  if (!config.spreadsheetUrl.includes('docs.google.com/spreadsheets')) {
+    throw new Error('Invalid Google Sheets URL format');
+  }
+
+  if (!config.inputTabs || config.inputTabs.length === 0) {
+    throw new Error('At least one input tab must be specified');
+  }
+
+  if (!config.outputTabs || config.outputTabs.length === 0) {
+    throw new Error('At least one output tab must be specified');
+  }
+
+  if (!['typescript', 'python'].includes(config.outputLanguage)) {
+    throw new Error('Output language must be "typescript" or "python"');
+  }
+
+  // Check for overlap between input and output tabs
+  const inputSet = new Set(config.inputTabs);
+  const outputSet = new Set(config.outputTabs);
+  const overlap = [...inputSet].filter(tab => outputSet.has(tab));
+  
+  if (overlap.length > 0) {
+    console.warn(`Warning: Tabs specified as both input and output: ${overlap.join(', ')}`);
+  }
+}
+
+program.parse();
