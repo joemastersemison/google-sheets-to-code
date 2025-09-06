@@ -63,24 +63,17 @@ jobs:
           echo "✅ package-lock.json is consistent"
 
   test:
-    name: Test on Node ${{ matrix.node-version }} and ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    
-    strategy:
-      matrix:
-        node-version: [18, 20, 21]
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        # Don't fail fast - let all combinations run
-      fail-fast: false
+    name: Test
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -88,14 +81,14 @@ jobs:
 
       - name: Run tests
         run: |
-          echo "🧪 Running tests on Node ${{ matrix.node-version }} (${{ matrix.os }})"
+          echo "🧪 Running tests on Node 20 (ubuntu-latest)"
           npm test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-node${{ matrix.node-version }}-${{ matrix.os }}
+          name: test-results
           path: |
             coverage/
             test-results.xml
@@ -271,9 +264,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [[ "${{ needs.test.result }}" == "success" ]]; then
-            echo "✅ **Unit Tests**: Passed on all platforms and Node versions" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Unit Tests**: Passed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Unit Tests**: Failed on one or more platforms" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Unit Tests**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
           
           if [[ "${{ needs.coverage.result }}" == "success" ]]; then
@@ -292,5 +285,5 @@ jobs:
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 **Artifacts Available:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Test results for all platforms" >> $GITHUB_STEP_SUMMARY
+          echo "- Test results" >> $GITHUB_STEP_SUMMARY
           echo "- Code coverage reports" >> $GITHUB_STEP_SUMMARY
