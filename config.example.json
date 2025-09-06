@@ -1,13 +1,6 @@
 {
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
-  "inputTabs": [
-    "Input",
-    "Parameters",
-    "Data"
-  ],
-  "outputTabs": [
-    "Results",
-    "Summary"
-  ],
+  "inputTabs": ["Input", "Parameters", "Data"],
+  "outputTabs": ["Results", "Summary"],
   "outputLanguage": "typescript"
 }

@@ -1,9 +1,11 @@
-import { DependencyNode, ParsedFormula, Sheet } from '../types/index.js';
+import type { DependencyNode, ParsedFormula, Sheet } from "../types/index.js";
 
 export class DependencyAnalyzer {
-  private dependencies: Map<string, DependencyNode> = new Map();
+  dependencies: Map<string, DependencyNode> = new Map();
 
-  buildDependencyGraph(sheets: Map<string, Sheet>): Map<string, DependencyNode> {
+  buildDependencyGraph(
+    sheets: Map<string, Sheet>
+  ): Map<string, DependencyNode> {
     this.dependencies.clear();
 
     // First pass: Create nodes for all cells with formulas
@@ -15,14 +17,14 @@ export class DependencyAnalyzer {
             cellRef,
             sheetName,
             dependencies: new Set(),
-            formula: cell.parsedFormula
+            formula: cell.parsedFormula,
           });
         }
       }
     }
 
     // Second pass: Extract dependencies from formulas
-    for (const [nodeId, node] of this.dependencies) {
+    for (const [_nodeId, node] of this.dependencies) {
       if (node.formula) {
         const refs = this.extractReferences(node.formula, node.sheetName);
         node.dependencies = refs;
@@ -35,15 +37,18 @@ export class DependencyAnalyzer {
     return this.dependencies;
   }
 
-  private extractReferences(formula: ParsedFormula, currentSheet: string): Set<string> {
+  private extractReferences(
+    formula: ParsedFormula,
+    currentSheet: string
+  ): Set<string> {
     const references = new Set<string>();
 
     const traverse = (node: ParsedFormula) => {
-      if (node.type === 'reference') {
+      if (node.type === "reference") {
         const ref = this.normalizeReference(node.value, currentSheet);
         references.add(ref);
       }
-      
+
       if (node.children) {
         for (const child of node.children) {
           traverse(child);
@@ -57,25 +62,25 @@ export class DependencyAnalyzer {
 
   private normalizeReference(ref: string, currentSheet: string): string {
     // Handle sheet references
-    if (ref.includes('!')) {
+    if (ref.includes("!")) {
       return ref;
     }
-    
+
     // Handle range references
-    if (ref.includes(':')) {
-      const [start, end] = ref.split(':');
+    if (ref.includes(":")) {
+      const [start, end] = ref.split(":");
       const normalizedStart = this.normalizeCellRef(start);
       const normalizedEnd = this.normalizeCellRef(end);
       return `${currentSheet}!${normalizedStart}:${normalizedEnd}`;
     }
-    
+
     // Single cell reference
     return `${currentSheet}!${this.normalizeCellRef(ref)}`;
   }
 
   private normalizeCellRef(ref: string): string {
     // Remove absolute reference markers ($)
-    return ref.replace(/\$/g, '');
+    return ref.replace(/\$/g, "");
   }
 
   getCalculationOrder(): string[] {
@@ -91,7 +96,7 @@ export class DependencyAnalyzer {
 
       visiting.add(nodeId);
       const node = this.dependencies.get(nodeId);
-      
+
       if (node) {
         for (const dep of node.dependencies) {
           // Only visit dependencies that are cells with formulas
@@ -100,7 +105,7 @@ export class DependencyAnalyzer {
           }
         }
       }
-      
+
       visiting.delete(nodeId);
       visited.add(nodeId);
       order.push(nodeId);
@@ -135,7 +140,9 @@ export class DependencyAnalyzer {
             // Found a cycle
             const cycleStart = path.indexOf(dep);
             const cycle = path.slice(cycleStart).concat(dep);
-            throw new Error(`Circular dependency detected: ${cycle.join(' -> ')}`);
+            throw new Error(
+              `Circular dependency detected: ${cycle.join(" -> ")}`
+            );
           }
         }
       }
@@ -154,24 +161,24 @@ export class DependencyAnalyzer {
 
   getDependents(cellRef: string): Set<string> {
     const dependents = new Set<string>();
-    
+
     for (const [nodeId, node] of this.dependencies) {
       if (node.dependencies.has(cellRef)) {
         dependents.add(nodeId);
       }
     }
-    
+
     return dependents;
   }
 
   getTransitiveDependencies(cellRef: string): Set<string> {
     const result = new Set<string>();
     const visited = new Set<string>();
-    
+
     const collect = (ref: string) => {
       if (visited.has(ref)) return;
       visited.add(ref);
-      
+
       const node = this.dependencies.get(ref);
       if (node) {
         for (const dep of node.dependencies) {
@@ -180,7 +187,7 @@ export class DependencyAnalyzer {
         }
       }
     };
-    
+
     collect(cellRef);
     return result;
   }
@@ -188,18 +195,18 @@ export class DependencyAnalyzer {
   getTransitiveDependents(cellRef: string): Set<string> {
     const result = new Set<string>();
     const visited = new Set<string>();
-    
+
     const collect = (ref: string) => {
       if (visited.has(ref)) return;
       visited.add(ref);
-      
+
       const dependents = this.getDependents(ref);
       for (const dep of dependents) {
         result.add(dep);
         collect(dep);
       }
     };
-    
+
     collect(cellRef);
     return result;
   }

@@ -1,9 +1,10 @@
-import { Sheet, ParsedFormula, DependencyNode } from '../types/index.js';
+import type { DependencyNode, ParsedFormula, Sheet } from "../types/index.js";
+import { DependencyAnalyzer } from "../utils/dependency-analyzer.js";
 
 export class PythonGenerator {
   private indentLevel = 0;
-  private indentString = '    ';
-  
+  private indentString = "    ";
+
   generate(
     sheets: Map<string, Sheet>,
     dependencyGraph: Map<string, DependencyNode>,
@@ -11,23 +12,30 @@ export class PythonGenerator {
     outputTabs: string[]
   ): string {
     const code: string[] = [];
-    
+
     // Add imports
-    code.push('from typing import Dict, Any, List, Union');
-    code.push('import math');
-    code.push('from datetime import datetime');
-    code.push('');
-    
+    code.push("from typing import Dict, Any, List, Union");
+    code.push("import math");
+    code.push("from datetime import datetime");
+    code.push("");
+
     // Generate the main calculation function
-    code.push(this.generateCalculationFunction(sheets, dependencyGraph, inputTabs, outputTabs));
-    code.push('');
-    
+    code.push(
+      this.generateCalculationFunction(
+        sheets,
+        dependencyGraph,
+        inputTabs,
+        outputTabs
+      )
+    );
+    code.push("");
+
     // Add helper functions
     code.push(this.generateHelperFunctions());
-    
-    return code.join('\n');
+
+    return code.join("\n");
   }
-  
+
   private generateCalculationFunction(
     sheets: Map<string, Sheet>,
     dependencyGraph: Map<string, DependencyNode>,
@@ -35,129 +43,156 @@ export class PythonGenerator {
     outputTabs: string[]
   ): string {
     const lines: string[] = [];
-    
-    lines.push('def calculate_spreadsheet(input_data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:');
+
+    lines.push(
+      "def calculate_spreadsheet(input_data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:"
+    );
     this.indentLevel++;
-    
+
     // Docstring
     lines.push(this.indent('"""'));
-    lines.push(this.indent('Calculate spreadsheet formulas based on input data.'));
-    lines.push(this.indent(''));
-    lines.push(this.indent('Args:'));
-    lines.push(this.indent('    input_data: Dictionary with sheet names as keys and cell values as nested dict'));
-    lines.push(this.indent(''));
-    lines.push(this.indent('Returns:'));
-    lines.push(this.indent('    Dictionary with calculated output values'));
+    lines.push(
+      this.indent("Calculate spreadsheet formulas based on input data.")
+    );
+    lines.push(this.indent(""));
+    lines.push(this.indent("Args:"));
+    lines.push(
+      this.indent(
+        "    input_data: Dictionary with sheet names as keys and cell values as nested dict"
+      )
+    );
+    lines.push(this.indent(""));
+    lines.push(this.indent("Returns:"));
+    lines.push(this.indent("    Dictionary with calculated output values"));
     lines.push(this.indent('"""'));
-    
+
     // Initialize cells dictionary
-    lines.push(this.indent('cells = {}'));
-    lines.push('');
-    
+    lines.push(this.indent("cells = {}"));
+    lines.push("");
+
     // Copy input values
-    lines.push(this.indent('# Initialize input values'));
+    lines.push(this.indent("# Initialize input values"));
     for (const tabName of inputTabs) {
       const sheet = sheets.get(tabName);
       if (sheet) {
         const sanitizedTabName = this.sanitizePropertyName(tabName);
-        lines.push(this.indent(`input_sheet = input_data.get('${sanitizedTabName}', {})`));
-        
+        lines.push(
+          this.indent(`input_sheet = input_data.get('${sanitizedTabName}', {})`)
+        );
+
         for (const [cellRef, cell] of sheet.cells) {
           if (!cell.formula) {
             const sanitizedCellRef = this.sanitizePropertyName(cellRef);
             const cellKey = `${tabName}!${cellRef}`;
             const defaultValue = this.formatPythonValue(cell.value);
-            lines.push(this.indent(`cells['${cellKey}'] = input_sheet.get('${sanitizedCellRef}', ${defaultValue})`));
+            lines.push(
+              this.indent(
+                `cells['${cellKey}'] = input_sheet.get('${sanitizedCellRef}', ${defaultValue})`
+              )
+            );
           }
         }
-        lines.push('');
+        lines.push("");
       }
     }
-    
+
     // Calculate formulas in dependency order
-    lines.push(this.indent('# Calculate formulas'));
+    lines.push(this.indent("# Calculate formulas"));
     const analyzer = new DependencyAnalyzer();
     analyzer.dependencies = dependencyGraph;
     const calculationOrder = analyzer.getCalculationOrder();
-    
+
     for (const nodeId of calculationOrder) {
       const node = dependencyGraph.get(nodeId);
-      if (node && node.formula) {
-        const formulaCode = this.generateFormulaCode(node.formula, node.sheetName);
+      if (node?.formula) {
+        const formulaCode = this.generateFormulaCode(
+          node.formula,
+          node.sheetName
+        );
         lines.push(this.indent(`cells['${nodeId}'] = ${formulaCode}`));
       }
     }
-    lines.push('');
-    
+    lines.push("");
+
     // Build output dictionary
-    lines.push(this.indent('# Build output'));
-    lines.push(this.indent('output = {}'));
-    
+    lines.push(this.indent("# Build output"));
+    lines.push(this.indent("output = {}"));
+
     for (const tabName of outputTabs) {
       const sheet = sheets.get(tabName);
       if (sheet) {
         const sanitizedTabName = this.sanitizePropertyName(tabName);
         lines.push(this.indent(`output['${sanitizedTabName}'] = {}`));
-        
-        for (const [cellRef, cell] of sheet.cells) {
+
+        for (const [cellRef, _cell] of sheet.cells) {
           const sanitizedCellRef = this.sanitizePropertyName(cellRef);
           const cellKey = `${tabName}!${cellRef}`;
-          lines.push(this.indent(`output['${sanitizedTabName}']['${sanitizedCellRef}'] = cells.get('${cellKey}')`));
+          lines.push(
+            this.indent(
+              `output['${sanitizedTabName}']['${sanitizedCellRef}'] = cells.get('${cellKey}')`
+            )
+          );
         }
-        lines.push('');
+        lines.push("");
       }
     }
-    
-    lines.push(this.indent('return output'));
+
+    lines.push(this.indent("return output"));
     this.indentLevel--;
-    
-    return lines.join('\n');
+
+    return lines.join("\n");
   }
-  
-  private generateFormulaCode(formula: ParsedFormula, currentSheet: string): string {
+
+  private generateFormulaCode(
+    formula: ParsedFormula,
+    currentSheet: string
+  ): string {
     switch (formula.type) {
-      case 'literal':
+      case "literal":
         return this.formatPythonValue(formula.value);
-      
-      case 'reference':
+
+      case "reference":
         return this.generateReferenceCode(formula.value, currentSheet);
-      
-      case 'operator':
+
+      case "operator":
         return this.generateOperatorCode(formula, currentSheet);
-      
-      case 'function':
+
+      case "function":
         return this.generateFunctionCode(formula, currentSheet);
-      
+
       default:
         throw new Error(`Unknown formula type: ${formula.type}`);
     }
   }
-  
+
   private generateReferenceCode(ref: string, currentSheet: string): string {
-    if (ref.includes(':')) {
+    if (ref.includes(":")) {
       // Range reference
-      const fullRef = ref.includes('!') ? ref : `${currentSheet}!${ref}`;
+      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
       return `get_range('${fullRef}', cells)`;
     } else {
       // Cell reference
-      const fullRef = ref.includes('!') ? ref : `${currentSheet}!${ref}`;
+      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
       return `cells.get('${fullRef}')`;
     }
   }
-  
-  private generateOperatorCode(formula: ParsedFormula, currentSheet: string): string {
+
+  private generateOperatorCode(
+    formula: ParsedFormula,
+    currentSheet: string
+  ): string {
     const operator = formula.value;
     const children = formula.children || [];
-    
+
     if (children.length === 1) {
       // Unary operator
       const operand = this.generateFormulaCode(children[0], currentSheet);
       switch (operator) {
-        case '-':
+        case "-":
           return `-${operand}`;
-        case '+':
+        case "+":
           return `+${operand}`;
-        case '%':
+        case "%":
           return `(${operand} / 100)`;
         default:
           throw new Error(`Unknown unary operator: ${operator}`);
@@ -166,31 +201,31 @@ export class PythonGenerator {
       // Binary operator
       const left = this.generateFormulaCode(children[0], currentSheet);
       const right = this.generateFormulaCode(children[1], currentSheet);
-      
+
       switch (operator) {
-        case '+':
+        case "+":
           return `(${left} + ${right})`;
-        case '-':
+        case "-":
           return `(${left} - ${right})`;
-        case '*':
+        case "*":
           return `(${left} * ${right})`;
-        case '/':
+        case "/":
           return `safe_divide(${left}, ${right})`;
-        case '^':
+        case "^":
           return `(${left} ** ${right})`;
-        case '&':
+        case "&":
           return `str(${left}) + str(${right})`;
-        case '=':
+        case "=":
           return `(${left} == ${right})`;
-        case '<>':
+        case "<>":
           return `(${left} != ${right})`;
-        case '<':
+        case "<":
           return `(${left} < ${right})`;
-        case '>':
+        case ">":
           return `(${left} > ${right})`;
-        case '<=':
+        case "<=":
           return `(${left} <= ${right})`;
-        case '>=':
+        case ">=":
           return `(${left} >= ${right})`;
         default:
           throw new Error(`Unknown binary operator: ${operator}`);
@@ -199,55 +234,58 @@ export class PythonGenerator {
       throw new Error(`Invalid operator with ${children.length} operands`);
     }
   }
-  
-  private generateFunctionCode(formula: ParsedFormula, currentSheet: string): string {
+
+  private generateFunctionCode(
+    formula: ParsedFormula,
+    currentSheet: string
+  ): string {
     const functionName = formula.value.toUpperCase();
-    const args = (formula.children || []).map(child => 
+    const args = (formula.children || []).map((child) =>
       this.generateFormulaCode(child, currentSheet)
     );
-    
+
     // Map spreadsheet functions to Python implementations
     switch (functionName) {
-      case 'SUM':
-        return `sum_values(${args.join(', ')})`;
-      case 'AVERAGE':
-        return `average_values(${args.join(', ')})`;
-      case 'MIN':
-        return `min_values(${args.join(', ')})`;
-      case 'MAX':
-        return `max_values(${args.join(', ')})`;
-      case 'COUNT':
-        return `count_values(${args.join(', ')})`;
-      case 'IF':
-        return `(${args[1]} if ${args[0]} else ${args[2] || 'False'})`;
-      case 'CONCATENATE':
-        return `concatenate_values(${args.join(', ')})`;
-      case 'VLOOKUP':
-        return `vlookup(${args.join(', ')})`;
-      case 'ROUND':
-        return `round(${args[0]}, ${args[1] || '0'})`;
-      case 'ABS':
+      case "SUM":
+        return `sum_values(${args.join(", ")})`;
+      case "AVERAGE":
+        return `average_values(${args.join(", ")})`;
+      case "MIN":
+        return `min_values(${args.join(", ")})`;
+      case "MAX":
+        return `max_values(${args.join(", ")})`;
+      case "COUNT":
+        return `count_values(${args.join(", ")})`;
+      case "IF":
+        return `(${args[1]} if ${args[0]} else ${args[2] || "False"})`;
+      case "CONCATENATE":
+        return `concatenate_values(${args.join(", ")})`;
+      case "VLOOKUP":
+        return `vlookup(${args.join(", ")})`;
+      case "ROUND":
+        return `round(${args[0]}, ${args[1] || "0"})`;
+      case "ABS":
         return `abs(${args[0]})`;
-      case 'SQRT':
+      case "SQRT":
         return `math.sqrt(${args[0]})`;
-      case 'LEN':
+      case "LEN":
         return `len(str(${args[0]}))`;
-      case 'UPPER':
+      case "UPPER":
         return `str(${args[0]}).upper()`;
-      case 'LOWER':
+      case "LOWER":
         return `str(${args[0]}).lower()`;
-      case 'TRIM':
+      case "TRIM":
         return `str(${args[0]}).strip()`;
-      case 'TODAY':
+      case "TODAY":
         return `datetime.now().strftime('%Y-%m-%d')`;
-      case 'NOW':
+      case "NOW":
         return `datetime.now().isoformat()`;
       default:
         // For unknown functions, generate a generic call
-        return `${functionName.lower()}(${args.join(', ')})`;
+        return `${functionName.toLowerCase()}(${args.join(", ")})`;
     }
   }
-  
+
   private generateHelperFunctions(): string {
     return `# Helper functions
 def flatten_values(*args):
@@ -331,78 +369,39 @@ def get_range(range_ref: str, cells: dict) -> list:
     # TODO: Implement proper range extraction
     return result`;
   }
-  
+
   private sanitizePropertyName(name: string): string {
     // Convert to valid Python identifier
     // Replace invalid characters with underscores
-    let sanitized = name.replace(/[^a-zA-Z0-9_]/g, '_');
-    
+    let sanitized = name.replace(/[^a-zA-Z0-9_]/g, "_");
+
     // Ensure it doesn't start with a number
     if (/^\d/.test(sanitized)) {
-      sanitized = '_' + sanitized;
+      sanitized = `_${sanitized}`;
     }
-    
+
     return sanitized;
   }
-  
-  private formatPythonValue(value: any): string {
-    if (typeof value === 'string') {
-      if (value === 'TRUE') {
-        return 'True';
+
+  private formatPythonValue(value: string | number | boolean | null): string {
+    if (typeof value === "string") {
+      if (value === "TRUE") {
+        return "True";
       }
-      if (value === 'FALSE') {
-        return 'False';
+      if (value === "FALSE") {
+        return "False";
       }
       // Escape quotes in string
-      const escaped = value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const escaped = value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       return `'${escaped}'`;
     }
     if (value === null || value === undefined) {
-      return 'None';
+      return "None";
     }
     return String(value);
   }
-  
+
   private indent(text: string): string {
     return this.indentString.repeat(this.indentLevel) + text;
-  }
-}
-
-// Import DependencyAnalyzer for calculation order
-class DependencyAnalyzer {
-  dependencies: Map<string, DependencyNode> = new Map();
-  
-  getCalculationOrder(): string[] {
-    const visited = new Set<string>();
-    const order: string[] = [];
-    const visiting = new Set<string>();
-
-    const visit = (nodeId: string) => {
-      if (visited.has(nodeId)) return;
-      if (visiting.has(nodeId)) {
-        throw new Error(`Circular dependency detected involving ${nodeId}`);
-      }
-
-      visiting.add(nodeId);
-      const node = this.dependencies.get(nodeId);
-      
-      if (node) {
-        for (const dep of node.dependencies) {
-          if (this.dependencies.has(dep)) {
-            visit(dep);
-          }
-        }
-      }
-      
-      visiting.delete(nodeId);
-      visited.add(nodeId);
-      order.push(nodeId);
-    };
-
-    for (const nodeId of this.dependencies.keys()) {
-      visit(nodeId);
-    }
-
-    return order;
   }
 }

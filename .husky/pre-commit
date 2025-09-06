@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Run lint-staged to fix formatting and linting issues on staged files
+npx lint-staged
+
+# Check if lint-staged succeeded
+if [ $? -ne 0 ]; then
+    echo "❌ Pre-commit hook failed during lint-staged"
+    exit 1
+fi
+
+# Get list of staged files (excluding deleted files)
+staged_files=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(ts|js|tsx|jsx|json)$' || true)
+
+if [ -z "$staged_files" ]; then
+    echo "✅ No TypeScript/JavaScript files to check"
+    exit 0
+fi
+
+# Run Biome check on staged files to catch any remaining errors
+echo "🔍 Checking for remaining linting errors..."
+npx biome check $staged_files
+
+# Check if there are any errors
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-commit hook failed!"
+    echo "There are linting errors that could not be automatically fixed."
+    echo "Please fix the errors above and try committing again."
+    exit 1
+fi
+
+# Run TypeScript type checking
+echo "🔍 Running TypeScript type check..."
+npm run typecheck
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-commit hook failed!"
+    echo "There are TypeScript type errors."
+    echo "Please fix the errors above and try committing again."
+    exit 1
+fi
+
+echo "✅ All checks passed!"
+exit 0

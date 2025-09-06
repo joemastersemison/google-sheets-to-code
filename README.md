@@ -1,5 +1,7 @@
 # Google Sheets to Code Converter
 
+[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/google-sheets-to-code/actions/workflows/test.yml/badge.svg)](https://github.com/YOUR_USERNAME/google-sheets-to-code/actions/workflows/test.yml)
+
 Convert Google Sheets formulas and logic into executable TypeScript or Python code.
 
 ## Features
@@ -15,6 +17,27 @@ Convert Google Sheets formulas and logic into executable TypeScript or Python co
 ```bash
 npm install
 ```
+
+## Development Setup
+
+### Pre-commit Hook
+
+This project uses a pre-commit hook to automatically format code and check for linting errors. The hook will:
+
+1. **Automatically fix** formatting and linting issues on staged files
+2. **Block commits** if there are errors that can't be automatically fixed
+3. **Run TypeScript type checking** to ensure type safety
+
+The pre-commit hook is automatically installed when you run `npm install`.
+
+### GitHub Actions
+
+This project includes comprehensive GitHub Actions workflows:
+
+- **CI/CD Pipeline** (`.github/workflows/test.yml`): Complete pipeline with code quality checks, comprehensive testing, security audits, and build verification
+- **Auto-format PR** (`.github/workflows/format-pr.yml`): Allows maintainers to comment `/format` on PRs to auto-format code
+
+All workflows run automatically on pushes and pull requests to ensure code quality.
 
 ## Setup
 
@@ -191,11 +214,36 @@ npm run typecheck
 
 ## Contributing
 
+We welcome contributions! Please ensure your code meets our quality standards:
+
+### Code Quality Requirements
+
+- ✅ **Linting**: All code must pass `npm run lint`
+- ✅ **Formatting**: Code must be formatted with `npm run format:fix`
+- ✅ **Type Safety**: No TypeScript errors (`npm run typecheck`)
+- ✅ **Tests**: All tests must pass (`npm test`)
+- ✅ **Pre-commit**: The pre-commit hook will automatically check these
+
+### Development Process
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Add tests
-5. Submit a pull request
+4. Ensure all quality checks pass:
+   ```bash
+   npm run lint
+   npm run format:fix
+   npm run typecheck
+   npm test
+   ```
+5. Commit your changes (pre-commit hook will run automatically)
+6. Push to your branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Maintainer Commands
+
+Maintainers can use these special PR comments:
+- `/format` - Auto-format the code in the PR
 
 ## License
 

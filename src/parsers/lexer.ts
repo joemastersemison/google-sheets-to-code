@@ -1,76 +1,85 @@
-import { createToken, Lexer } from 'chevrotain';
+import { createToken, Lexer } from "chevrotain";
 
-export const True = createToken({ name: 'True', pattern: /TRUE/i });
-export const False = createToken({ name: 'False', pattern: /FALSE/i });
+export const True = createToken({ name: "True", pattern: /TRUE/i });
+export const False = createToken({ name: "False", pattern: /FALSE/i });
 
-export const Function = createToken({ 
-  name: 'Function', 
+export const FunctionToken = createToken({
+  name: "Function",
   pattern: /[A-Z][A-Z0-9_]*/i,
-  longer_alt: True
+  longer_alt: True,
 });
 
 export const SheetReference = createToken({
-  name: 'SheetReference',
-  pattern: /[A-Za-z0-9_\- ]+!/
+  name: "SheetReference",
+  pattern: /[A-Za-z0-9_\- ]+!/,
 });
 
 export const CellReference = createToken({
-  name: 'CellReference',
-  pattern: /\$?[A-Z]+\$?[0-9]+/i
+  name: "CellReference",
+  pattern: /\$?[A-Z]+\$?[0-9]+/i,
 });
 
 export const RangeReference = createToken({
-  name: 'RangeReference',
-  pattern: /\$?[A-Z]+\$?[0-9]+:\$?[A-Z]+\$?[0-9]+/i
+  name: "RangeReference",
+  pattern: /\$?[A-Z]+\$?[0-9]+:\$?[A-Z]+\$?[0-9]+/i,
 });
 
-export const Number = createToken({
-  name: 'Number',
-  pattern: /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/
+export const NumberToken = createToken({
+  name: "Number",
+  pattern: /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/,
 });
 
-export const String = createToken({
-  name: 'String',
-  pattern: /"(?:[^"\\]|\\.)*"/
+export const StringToken = createToken({
+  name: "String",
+  pattern: /"(?:[^"\\]|\\.)*"/,
 });
 
-export const Equals = createToken({ name: 'Equals', pattern: /=/ });
-export const NotEquals = createToken({ name: 'NotEquals', pattern: /<>/ });
-export const LessThanOrEqual = createToken({ name: 'LessThanOrEqual', pattern: /<=/ });
-export const GreaterThanOrEqual = createToken({ name: 'GreaterThanOrEqual', pattern: />=/ });
-export const LessThan = createToken({ name: 'LessThan', pattern: /</ });
-export const GreaterThan = createToken({ name: 'GreaterThan', pattern: />/ });
+export const Equals = createToken({ name: "Equals", pattern: /=/ });
+export const NotEquals = createToken({ name: "NotEquals", pattern: /<>/ });
+export const LessThanOrEqual = createToken({
+  name: "LessThanOrEqual",
+  pattern: /<=/,
+});
+export const GreaterThanOrEqual = createToken({
+  name: "GreaterThanOrEqual",
+  pattern: />=/,
+});
+export const LessThan = createToken({ name: "LessThan", pattern: /</ });
+export const GreaterThan = createToken({ name: "GreaterThan", pattern: />/ });
 
-export const Plus = createToken({ name: 'Plus', pattern: /\+/ });
-export const Minus = createToken({ name: 'Minus', pattern: /-/ });
-export const Multiply = createToken({ name: 'Multiply', pattern: /\*/ });
-export const Divide = createToken({ name: 'Divide', pattern: /\// });
-export const Power = createToken({ name: 'Power', pattern: /\^/ });
-export const Percent = createToken({ name: 'Percent', pattern: /%/ });
+export const Plus = createToken({ name: "Plus", pattern: /\+/ });
+export const Minus = createToken({ name: "Minus", pattern: /-/ });
+export const Multiply = createToken({ name: "Multiply", pattern: /\*/ });
+export const Divide = createToken({ name: "Divide", pattern: /\// });
+export const Power = createToken({ name: "Power", pattern: /\^/ });
+export const Percent = createToken({ name: "Percent", pattern: /%/ });
 
-export const Ampersand = createToken({ name: 'Ampersand', pattern: /&/ });
-export const Comma = createToken({ name: 'Comma', pattern: /,/ });
-export const Semicolon = createToken({ name: 'Semicolon', pattern: /;/ });
-export const Colon = createToken({ name: 'Colon', pattern: /:/ });
+export const Ampersand = createToken({ name: "Ampersand", pattern: /&/ });
+export const Comma = createToken({ name: "Comma", pattern: /,/ });
+export const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
+export const Colon = createToken({ name: "Colon", pattern: /:/ });
 
-export const LeftParen = createToken({ name: 'LeftParen', pattern: /\(/ });
-export const RightParen = createToken({ name: 'RightParen', pattern: /\)/ });
-export const LeftBracket = createToken({ name: 'LeftBracket', pattern: /\[/ });
-export const RightBracket = createToken({ name: 'RightBracket', pattern: /\]/ });
-export const LeftBrace = createToken({ name: 'LeftBrace', pattern: /\{/ });
-export const RightBrace = createToken({ name: 'RightBrace', pattern: /\}/ });
+export const LeftParen = createToken({ name: "LeftParen", pattern: /\(/ });
+export const RightParen = createToken({ name: "RightParen", pattern: /\)/ });
+export const LeftBracket = createToken({ name: "LeftBracket", pattern: /\[/ });
+export const RightBracket = createToken({
+  name: "RightBracket",
+  pattern: /\]/,
+});
+export const LeftBrace = createToken({ name: "LeftBrace", pattern: /\{/ });
+export const RightBrace = createToken({ name: "RightBrace", pattern: /\}/ });
 
 export const WhiteSpace = createToken({
-  name: 'WhiteSpace',
+  name: "WhiteSpace",
   pattern: /\s+/,
-  group: Lexer.SKIPPED
+  group: Lexer.SKIPPED,
 });
 
 export const allTokens = [
   WhiteSpace,
   True,
   False,
-  Function,
+  FunctionToken,
   NotEquals,
   LessThanOrEqual,
   GreaterThanOrEqual,
@@ -96,8 +105,8 @@ export const allTokens = [
   SheetReference,
   RangeReference,
   CellReference,
-  Number,
-  String
+  NumberToken,
+  StringToken,
 ];
 
 export const FormulaLexer = new Lexer(allTokens);

@@ -2,15 +2,16 @@ export interface SheetConfig {
   spreadsheetUrl: string;
   inputTabs: string[];
   outputTabs: string[];
-  outputLanguage: 'typescript' | 'python';
+  outputLanguage: "typescript" | "python";
 }
 
 export interface Cell {
   row: number;
   column: string;
-  value: any;
+  value: string | number | boolean | null;
   formula?: string;
   formattedValue?: string;
+  parsedFormula?: ParsedFormula;
 }
 
 export interface Sheet {
@@ -25,7 +26,7 @@ export interface Sheet {
 }
 
 export interface ParsedFormula {
-  type: 'function' | 'reference' | 'literal' | 'operator';
+  type: "function" | "reference" | "literal" | "operator";
   value: string;
   children?: ParsedFormula[];
 }
