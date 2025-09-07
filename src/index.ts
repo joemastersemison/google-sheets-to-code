@@ -22,10 +22,15 @@ export class SheetToCodeConverter {
       const parsedCells = new Map();
       for (const [cellRef, cell] of sheet.cells) {
         if (cell.formula) {
-          parsedCells.set(cellRef, {
-            ...cell,
-            parsedFormula: parser.parse(cell.formula),
-          });
+          try {
+            parsedCells.set(cellRef, {
+              ...cell,
+              parsedFormula: parser.parse(cell.formula),
+            });
+          } catch (error) {
+            console.warn(`Warning: Failed to parse formula in ${sheetName}!${cellRef}: ${cell.formula}. Error: ${error.message}`);
+            parsedCells.set(cellRef, cell);
+          }
         } else {
           parsedCells.set(cellRef, cell);
         }
