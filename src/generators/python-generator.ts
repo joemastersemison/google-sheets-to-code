@@ -380,8 +380,28 @@ export class PythonGenerator {
 
     // Map spreadsheet functions to Python implementations
     switch (functionName) {
+      // Math functions
       case "SUM":
         return `sum_values(${args.join(", ")})`;
+      case "ABS":
+        return `abs(${args[0]})`;
+      case "SQRT":
+        return `math.sqrt(${args[0]})`;
+      case "ROUND":
+        return `round(${args[0]}, ${args[1] || "0"})`;
+      case "EXP":
+        return `math.exp(${args[0]})`;
+      case "LN":
+        return `math.log(${args[0]})`;
+      case "LOG":
+        if (args.length > 1) {
+          return `(math.log(${args[0]}) / math.log(${args[1]}))`;
+        }
+        return `math.log10(${args[0]})`;
+      case "TRUNC":
+        return `math.trunc(${args[0]})`;
+
+      // Statistical functions
       case "AVERAGE":
         return `average_values(${args.join(", ")})`;
       case "MIN":
@@ -390,18 +410,68 @@ export class PythonGenerator {
         return `max_values(${args.join(", ")})`;
       case "COUNT":
         return `count_values(${args.join(", ")})`;
+      case "COUNTIF":
+        return `countif(${args.join(", ")})`;
+      case "STDEV":
+        return `stdev(${args.join(", ")})`;
+      case "CHIINV":
+        return `chiinv(${args.join(", ")})`;
+      case "FINV":
+        return `finv(${args.join(", ")})`;
+      case "T.INV":
+      case "TINV":
+        return `tinv(${args.join(", ")})`;
+      case "NORMSDIST":
+        return `normsdist(${args[0]})`;
+      case "NORMSINV":
+        return `normsinv(${args[0]})`;
+
+      // Logical functions
       case "IF":
         return `(${args[1]} if ${args[0]} else ${args.length > 2 ? args[2] : "False"})`;
-      case "CONCATENATE":
-        return `concatenate_values(${args.join(", ")})`;
+      case "AND":
+        return `(${args.join(" and ")})`;
+      case "OR":
+        return `(${args.join(" or ")})`;
+
+      // Information functions
+      case "ISNUMBER":
+        return `isinstance(${args[0]}, (int, float)) and not isinstance(${args[0]}, bool)`;
+      case "ISBLANK":
+        return `(${args[0]} is None or ${args[0]} == '')`;
+      case "ISTEXT":
+        return `isinstance(${args[0]}, str)`;
+      case "ISNA":
+        return `(${args[0]} == '#N/A')`;
+      case "NA":
+        return `'#N/A'`;
+
+      // Lookup functions
       case "VLOOKUP":
         return `vlookup(${args.join(", ")})`;
-      case "ROUND":
-        return `round(${args[0]}, ${args[1] || "0"})`;
-      case "ABS":
-        return `abs(${args[0]})`;
-      case "SQRT":
-        return `math.sqrt(${args[0]})`;
+      case "MATCH":
+        return `match(${args.join(", ")})`;
+      case "INDIRECT":
+        return `indirect(${args.join(", ")})`;
+      case "ROW":
+        if (args.length > 0) {
+          return `get_row(${args[0]})`;
+        }
+        return `get_current_row()`;
+
+      // Array functions
+      case "SORT":
+        return `sort_array(${args.join(", ")})`;
+      case "UNIQUE":
+        return `unique(${args.join(", ")})`;
+      case "RANK":
+        return `rank(${args.join(", ")})`;
+      case "SMALL":
+        return `small(${args.join(", ")})`;
+
+      // Text functions
+      case "CONCATENATE":
+        return `concatenate_values(${args.join(", ")})`;
       case "LEN":
         return `len(str(${args[0]}))`;
       case "UPPER":
@@ -410,10 +480,13 @@ export class PythonGenerator {
         return `str(${args[0]}).lower()`;
       case "TRIM":
         return `str(${args[0]}).strip()`;
+
+      // Date functions
       case "TODAY":
         return `datetime.now().strftime('%Y-%m-%d')`;
       case "NOW":
         return `datetime.now().isoformat()`;
+
       default:
         // For unknown functions, generate a generic call
         return `${functionName.toLowerCase()}(${args.join(", ")})`;
@@ -490,6 +563,190 @@ def vlookup(lookup_value, table_array, col_index, exact_match=True):
                 if row[0] >= lookup_value:
                     return row[col_index - 1]
     return '#N/A'
+
+
+# Statistical functions
+def countif(range_values, criterion):
+    """Count cells that meet a criterion."""
+    count = 0
+    criterion_str = str(criterion)
+    values = flatten_values(range_values)
+    
+    for value in values:
+        if criterion_str.startswith('>'):
+            if value > float(criterion_str[1:]):
+                count += 1
+        elif criterion_str.startswith('<'):
+            if value < float(criterion_str[1:]):
+                count += 1
+        elif criterion_str.startswith('>='):
+            if value >= float(criterion_str[2:]):
+                count += 1
+        elif criterion_str.startswith('<='):
+            if value <= float(criterion_str[2:]):
+                count += 1
+        elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
+            if value != criterion_str[2:]:
+                count += 1
+        else:
+            if value == criterion:
+                count += 1
+    return count
+
+
+def stdev(*args):
+    """Calculate sample standard deviation."""
+    import math
+    values = flatten_values(*args)
+    numeric_values = [float(v) for v in values if v is not None and str(v).strip() != '']
+    n = len(numeric_values)
+    if n < 2:
+        return 0
+    mean = sum(numeric_values) / n
+    variance = sum((x - mean) ** 2 for x in numeric_values) / (n - 1)
+    return math.sqrt(variance)
+
+
+# Statistical distribution functions
+def normsdist(z):
+    """Cumulative standard normal distribution."""
+    import math
+    a1 = 0.254829592
+    a2 = -0.284496736
+    a3 = 1.421413741
+    a4 = -1.453152027
+    a5 = 1.061405429
+    p = 0.3275911
+    sign = 1 if z >= 0 else -1
+    z = abs(z) / math.sqrt(2)
+    t = 1 / (1 + p * z)
+    y = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * math.exp(-z * z)
+    return 0.5 * (1 + sign * y)
+
+
+def normsinv(p):
+    """Inverse cumulative standard normal distribution."""
+    import math
+    if p <= 0 or p >= 1:
+        return float('nan')
+    
+    a = [2.50662823884, -18.61500062529, 41.39119773534, -25.44106049637]
+    b = [-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833]
+    c = [0.3374754822726147, 0.9761690190917186, 0.1607979714918209,
+         0.0276438810333863, 0.0038405729373609, 0.0003951896511919,
+         0.0000321767881768, 0.0000002888167364, 0.0000003960315187]
+    
+    y = p - 0.5
+    if abs(y) < 0.42:
+        z = y * y
+        return y * (((a[3] * z + a[2]) * z + a[1]) * z + a[0]) / \
+                   ((((b[3] * z + b[2]) * z + b[1]) * z + b[0]) * z + 1)
+    else:
+        z = math.log(-math.log(1 - p)) if y > 0 else math.log(-math.log(p))
+        x = c[0]
+        for i in range(1, 9):
+            x = x * z + c[i]
+        return x if y > 0 else -x
+
+
+def chiinv(p, df):
+    """Chi-square inverse (simplified)."""
+    import math
+    # Simplified implementation
+    return df * (1 - 2 / (9 * df) + normsinv(1 - p) * math.sqrt(2 / (9 * df))) ** 3
+
+
+def finv(p, df1, df2):
+    """F-distribution inverse (simplified)."""
+    import math
+    # Simplified implementation
+    return (df2 / df1) * (math.exp(2 * normsinv(1 - p) * math.sqrt(2 / (df1 + df2 - 2))) - 1)
+
+
+def tinv(p, df):
+    """T-distribution inverse (simplified)."""
+    import math
+    z = normsinv(1 - p / 2)
+    return z * math.sqrt(1 + z * z / (2 * df))
+
+
+# Lookup and reference functions
+def match(lookup_value, lookup_array, match_type=1):
+    """Find position of value in array."""
+    for i, value in enumerate(lookup_array):
+        if match_type == 0:
+            # Exact match
+            if value == lookup_value:
+                return i + 1
+        elif match_type == 1:
+            # Largest value less than or equal to lookup_value
+            if value > lookup_value:
+                return i
+            if i == len(lookup_array) - 1:
+                return i + 1
+        elif match_type == -1:
+            # Smallest value greater than or equal to lookup_value
+            if value <= lookup_value:
+                return i + 1
+    return -1
+
+
+def indirect(ref):
+    """Get value from indirect reference."""
+    # This would need access to the cells dictionary
+    return cells.get(ref, '#REF!')
+
+
+def get_row(cell_ref):
+    """Extract row number from cell reference."""
+    import re
+    match = re.search(r'\\d+$', cell_ref)
+    return int(match.group()) if match else 0
+
+
+def get_current_row():
+    """Get current row being evaluated."""
+    # This would need context about the current cell
+    return 1
+
+
+# Array functions
+def sort_array(array, sort_column=1, ascending=True):
+    """Sort array by specified column."""
+    result = list(array)
+    if result and isinstance(result[0], list):
+        result.sort(key=lambda x: x[sort_column - 1], reverse=not ascending)
+    else:
+        result.sort(reverse=not ascending)
+    return result
+
+
+def unique(array):
+    """Return unique values from array."""
+    seen = set()
+    result = []
+    for item in array:
+        item_key = str(item) if not isinstance(item, list) else str(tuple(item))
+        if item_key not in seen:
+            seen.add(item_key)
+            result.append(item)
+    return result
+
+
+def rank(value, array, order=0):
+    """Get rank of value in array."""
+    sorted_array = sorted(array, reverse=(order == 0))
+    try:
+        return sorted_array.index(value) + 1
+    except ValueError:
+        return 0
+
+
+def small(array, k):
+    """Get k-th smallest value from array."""
+    numeric_values = [v for v in flatten_values(array) if isinstance(v, (int, float))]
+    sorted_values = sorted(numeric_values)
+    return sorted_values[k - 1] if k <= len(sorted_values) else 0
 
 
 def get_range(range_ref: str, cells: dict) -> list:

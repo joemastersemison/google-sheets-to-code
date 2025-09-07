@@ -455,7 +455,7 @@
             </p>
             
             <div class="code-block">
-                <code>=IF(VLOOKUP(A2,Sheet2!A:D,4,FALSE)>100,SUM(B2:B10)*1.1,B2)</code>
+                <pre><code>=IF(VLOOKUP(A2,Sheet2!A:D,4,FALSE)>100,SUM(B2:B10)*1.1,B2)</code></pre>
             </div>
             
             <p>Gets transformed into a structured AST that represents the formula's logic programmatically.</p>
@@ -472,10 +472,10 @@
             </p>
             
             <div class="code-block">
-                <code>// TypeScript Output
+                <pre><code>// TypeScript Output
 cells['Results!A1'] = vlookup(cells['Input!A2'], getRange('Sheet2!A:D', cells), 4, false) > 100 
   ? sum(...getRange('Input!B2:B10', cells)) * 1.1 
-  : cells['Input!B2'];</code>
+  : cells['Input!B2'];</code></pre>
             </div>
         </section>
 
@@ -484,7 +484,7 @@ cells['Results!A1'] = vlookup(cells['Input!A2'], getRange('Sheet2!A:D', cells), 
             
             <h3>For Google Sheets:</h3>
             <div class="code-block">
-                <code># Clone the repository
+                <pre><code># Clone the repository
 git clone https://github.com/joemastersemison/google-sheets-to-code.git
 cd google-sheets-to-code
 
@@ -503,20 +503,14 @@ npm run cli -- convert \
   --output-file generated-code.ts
 
 # Run the generated code
-node generated-code.js --json</code>
+node generated-code.js --json</code></pre>
             </div>
             
             <h3>For Excel Files:</h3>
             <div class="code-block">
-                <code># Option 1: Import Excel file to Google Sheets
-# 1. Go to Google Sheets
+                <pre><code># 1. Go to Google Sheets
 # 2. File -> Import -> Upload your .xlsx file
-# 3. Use the Google Sheets URL with the tool
-
-# Option 2: Export Excel to CSV and import
-# 1. Save Excel file as CSV
-# 2. Import CSV to Google Sheets
-# 3. Use the tool with the Google Sheets URL</code>
+# 3. Use the Google Sheets URL with the tool</code></pre>
             </div>
         </section>
 
