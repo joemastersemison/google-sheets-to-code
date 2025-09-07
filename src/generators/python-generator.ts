@@ -100,16 +100,43 @@ export class PythonGenerator {
     lines.push(this.indent("# Calculate formulas"));
     const analyzer = new DependencyAnalyzer();
     analyzer.dependencies = dependencyGraph;
+    analyzer.detectCircularDependencies();
     const calculationOrder = analyzer.getCalculationOrder();
+
+    // Add warning comment if circular dependencies were detected
+    if (analyzer.circularDependencies.size > 0) {
+      lines.push(
+        this.indent(
+          "# ⚠️  Warning: Circular dependencies detected in the following cells:"
+        )
+      );
+      lines.push(
+        this.indent(`# ${Array.from(analyzer.circularDependencies).join(", ")}`)
+      );
+      lines.push(
+        this.indent("# These cells will be calculated with #REF! error values")
+      );
+      lines.push("");
+    }
 
     for (const nodeId of calculationOrder) {
       const node = dependencyGraph.get(nodeId);
       if (node?.formula) {
-        const formulaCode = this.generateFormulaCode(
-          node.formula,
-          node.sheetName
-        );
-        lines.push(this.indent(`cells['${nodeId}'] = ${formulaCode}`));
+        // Check if this cell is part of a circular dependency
+        if (analyzer.circularDependencies.has(nodeId)) {
+          lines.push(this.indent(`# Circular dependency: ${nodeId}`));
+          lines.push(
+            this.indent(
+              `cells['${nodeId}'] = '#REF!'  # Circular reference error`
+            )
+          );
+        } else {
+          const formulaCode = this.generateFormulaCode(
+            node.formula,
+            node.sheetName
+          );
+          lines.push(this.indent(`cells['${nodeId}'] = ${formulaCode}`));
+        }
       }
     }
     lines.push("");

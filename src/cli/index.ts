@@ -211,7 +211,9 @@ async function convertSheet(options: ConvertOptions) {
       }
 
       // Clean up temporary tsconfig
-      execSync(`rm ${tsconfigPath}`, { stdio: "pipe" });
+      if (existsSync(tsconfigPath)) {
+        execSync(`rm ${tsconfigPath}`, { stdio: "pipe" });
+      }
 
       const jsFile = outputFile.replace(/\.ts$/, ".js");
       const dtsFile = outputFile.replace(/\.ts$/, ".d.ts");

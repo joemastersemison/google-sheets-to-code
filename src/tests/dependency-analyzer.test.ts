@@ -266,9 +266,14 @@ describe("DependencyAnalyzer", () => {
         ],
       ]);
 
-      expect(() => analyzer.buildDependencyGraph(sheets)).toThrow(
-        /circular dependency/i
-      );
+      // Should not throw, but should mark cells as circular
+      const graph = analyzer.buildDependencyGraph(sheets);
+      expect(graph).toBeDefined();
+
+      // Check that circular dependencies were detected
+      analyzer.detectCircularDependencies();
+      expect(analyzer.circularDependencies.has("Sheet1!A1")).toBe(true);
+      expect(analyzer.circularDependencies.has("Sheet1!B1")).toBe(true);
     });
 
     it("should detect complex circular dependency", () => {
@@ -301,9 +306,15 @@ describe("DependencyAnalyzer", () => {
         ],
       ]);
 
-      expect(() => analyzer.buildDependencyGraph(sheets)).toThrow(
-        /circular dependency/i
-      );
+      // Should not throw, but should mark cells as circular
+      const graph = analyzer.buildDependencyGraph(sheets);
+      expect(graph).toBeDefined();
+
+      // Check that circular dependencies were detected
+      analyzer.detectCircularDependencies();
+      expect(analyzer.circularDependencies.has("Sheet1!A1")).toBe(true);
+      expect(analyzer.circularDependencies.has("Sheet1!B1")).toBe(true);
+      expect(analyzer.circularDependencies.has("Sheet1!C1")).toBe(true);
     });
   });
 

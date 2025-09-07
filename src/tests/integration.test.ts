@@ -347,9 +347,15 @@ describe("Integration Tests", () => {
 
       const analyzer = new DependencyAnalyzer();
 
-      expect(() => {
-        analyzer.buildDependencyGraph(sheets);
-      }).toThrow(/circular dependency/i);
+      // Should not throw, but should detect and handle circular dependencies
+      const graph = analyzer.buildDependencyGraph(sheets);
+      expect(graph).toBeDefined();
+
+      // Verify circular dependencies are detected
+      analyzer.detectCircularDependencies();
+      expect(analyzer.circularDependencies.size).toBeGreaterThan(0);
+      expect(analyzer.circularDependencies.has("Test!A1")).toBe(true);
+      expect(analyzer.circularDependencies.has("Test!B1")).toBe(true);
     });
 
     it("should handle malformed formulas gracefully", () => {

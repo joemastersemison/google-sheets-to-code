@@ -40,43 +40,49 @@ export class SheetToCodeConverter {
           const unquotedSheetPattern = /[A-Za-z0-9_]+(?=!)/g;
 
           // First, extract quoted sheet names
-          const quotedMatches = formula.match(quotedSheetPattern);
-          if (quotedMatches) {
-            quotedMatches.forEach((match) => {
-              // Check if this quoted string is followed by !
-              const index = formula.indexOf(match);
-              if (index !== -1 && formula[index + match.length] === "!") {
-                // Remove surrounding quotes and unescape doubled quotes
-                const sheetName = match.slice(1, -1).replace(/''/g, "'");
-                if (!sheets.has(sheetName)) {
-                  referencedSheets.add(sheetName);
-                }
-              }
-            });
-          }
+          // Use matchAll to get actual positions of matches
+          const quotedMatches = [...formula.matchAll(quotedSheetPattern)];
+          const processedQuotedRanges: Array<[number, number]> = [];
 
-          // Then, extract unquoted sheet names (but avoid matching already processed quoted ones)
-          let formulaWithoutQuoted = formula;
-          if (quotedMatches) {
-            // Temporarily replace quoted sections to avoid false matches
-            quotedMatches.forEach((match) => {
-              if (formula.indexOf(`${match}!`) !== -1) {
-                formulaWithoutQuoted = formulaWithoutQuoted.replace(
-                  `${match}!`,
-                  ""
-                );
-              }
-            });
-          }
-
-          const unquotedMatches =
-            formulaWithoutQuoted.match(unquotedSheetPattern);
-          if (unquotedMatches) {
-            unquotedMatches.forEach((sheetName) => {
+          for (const match of quotedMatches) {
+            // Check if this quoted string is followed by !
+            const matchIndex = match.index;
+            if (matchIndex === undefined) continue; // Skip if no index (shouldn't happen with matchAll)
+            const matchText = match[0];
+            if (formula[matchIndex + matchText.length] === "!") {
+              // Remove surrounding quotes and unescape doubled quotes
+              const sheetName = matchText.slice(1, -1).replace(/''/g, "'");
               if (!sheets.has(sheetName)) {
                 referencedSheets.add(sheetName);
               }
-            });
+              // Track this range as processed
+              processedQuotedRanges.push([
+                matchIndex,
+                matchIndex + matchText.length + 1,
+              ]);
+            }
+          }
+
+          // Then, extract unquoted sheet names (but avoid matching already processed quoted ones)
+          // Check if a position is within any processed quoted range
+          const isInQuotedRange = (index: number): boolean => {
+            return processedQuotedRanges.some(
+              ([start, end]) => index >= start && index < end
+            );
+          };
+
+          // Use matchAll for unquoted patterns too
+          const unquotedMatches = [...formula.matchAll(unquotedSheetPattern)];
+          for (const match of unquotedMatches) {
+            const matchIndex = match.index;
+            if (matchIndex === undefined) continue; // Skip if no index (shouldn't happen with matchAll)
+            // Skip if this match is within a quoted sheet reference we already processed
+            if (!isInQuotedRange(matchIndex)) {
+              const sheetName = match[0];
+              if (!sheets.has(sheetName)) {
+                referencedSheets.add(sheetName);
+              }
+            }
           }
         }
       }

@@ -2,11 +2,13 @@ import type { DependencyNode, ParsedFormula, Sheet } from "../types/index.js";
 
 export class DependencyAnalyzer {
   dependencies: Map<string, DependencyNode> = new Map();
+  circularDependencies: Set<string> = new Set();
 
   buildDependencyGraph(
     sheets: Map<string, Sheet>
   ): Map<string, DependencyNode> {
     this.dependencies.clear();
+    this.circularDependencies.clear();
 
     // First pass: Create nodes for all cells with formulas
     for (const [sheetName, sheet] of sheets) {
@@ -90,8 +92,23 @@ export class DependencyAnalyzer {
 
     const visit = (nodeId: string) => {
       if (visited.has(nodeId)) return;
+
+      // Skip if this cell is part of a circular dependency
+      // It will be calculated with a default/error value
+      if (this.circularDependencies.has(nodeId)) {
+        visited.add(nodeId);
+        order.push(nodeId);
+        return;
+      }
+
       if (visiting.has(nodeId)) {
-        throw new Error(`Circular dependency detected involving ${nodeId}`);
+        // This shouldn't happen if detectCircularDependencies() worked correctly
+        // But if it does, mark as circular and continue
+        this.circularDependencies.add(nodeId);
+        console.warn(`⚠️  Late circular dependency detection for ${nodeId}`);
+        visited.add(nodeId);
+        order.push(nodeId);
+        return;
       }
 
       visiting.add(nodeId);
@@ -100,7 +117,11 @@ export class DependencyAnalyzer {
       if (node) {
         for (const dep of node.dependencies) {
           // Only visit dependencies that are cells with formulas
-          if (this.dependencies.has(dep)) {
+          // Skip circular dependencies
+          if (
+            this.dependencies.has(dep) &&
+            !this.circularDependencies.has(dep)
+          ) {
             visit(dep);
           }
         }
@@ -119,7 +140,7 @@ export class DependencyAnalyzer {
     return order;
   }
 
-  private detectCircularDependencies() {
+  detectCircularDependencies() {
     const visited = new Set<string>();
     const recursionStack = new Set<string>();
     const path: string[] = [];
@@ -142,12 +163,21 @@ export class DependencyAnalyzer {
               return true;
             }
           } else if (recursionStack.has(dep)) {
-            // Found a cycle
+            // Found a cycle - mark all cells in the cycle
             const cycleStart = path.indexOf(dep);
-            const cycle = path.slice(cycleStart).concat(dep);
-            throw new Error(
-              `Circular dependency detected: ${cycle.join(" -> ")}`
+            const cycle = path.slice(cycleStart);
+
+            // Store all cells involved in this circular dependency
+            for (const cellId of cycle) {
+              this.circularDependencies.add(cellId);
+            }
+
+            // Log warning but don't throw - let code generation handle it
+            console.warn(
+              `⚠️  Circular dependency detected: ${cycle.join(" -> ")} -> ${dep}`
             );
+
+            return true; // Signal that a cycle was found
           }
         }
       }
