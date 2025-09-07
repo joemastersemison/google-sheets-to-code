@@ -132,6 +132,11 @@ export class DependencyAnalyzer {
       const node = this.dependencies.get(nodeId);
       if (node) {
         for (const dep of node.dependencies) {
+          // Only follow dependencies that are actual nodes in the graph (cells with formulas)
+          if (!this.dependencies.has(dep)) {
+            continue;
+          }
+
           if (!visited.has(dep)) {
             if (detectCycle(dep)) {
               return true;
