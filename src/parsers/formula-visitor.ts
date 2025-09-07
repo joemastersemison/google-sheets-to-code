@@ -190,15 +190,15 @@ export function createFormulaVisitor(parser: CstParser) {
     primaryExpression(ctx: PrimaryExpressionContext): ParsedFormula {
       // Check for consumed tokens (they are stored as arrays in the CST)
       // Token names in the CST may be different from the token class names
-      if ((ctx as any).Number && (ctx as any).Number.length > 0) {
+      if (ctx.Number && ctx.Number.length > 0) {
         return {
           type: "literal",
-          value: (ctx as any).Number[0].image,
+          value: ctx.Number[0].image,
         };
       }
 
-      if ((ctx as any).String && (ctx as any).String.length > 0) {
-        const stringValue = (ctx as any).String[0].image;
+      if (ctx.String && ctx.String.length > 0) {
+        const stringValue = ctx.String[0].image;
         return {
           type: "literal",
           value: stringValue.slice(1, -1).replace(/\\"/g, '"'),
@@ -239,7 +239,7 @@ export function createFormulaVisitor(parser: CstParser) {
 
       // Better error message with context info
       const availableKeys = Object.keys(ctx).filter((k) => {
-        const value = (ctx as any)[k];
+        const value = (ctx as Record<string, unknown>)[k];
         return value && (Array.isArray(value) ? value.length > 0 : true);
       });
       throw new Error(
@@ -274,7 +274,7 @@ export function createFormulaVisitor(parser: CstParser) {
     }
 
     functionCall(ctx: FunctionCallContext): ParsedFormula {
-      const functionName = (ctx as any).Function[0].image;
+      const functionName = ctx.Function[0].image;
       const args: ParsedFormula[] =
         ctx.argumentList && ctx.argumentList.length > 0
           ? this.visit(ctx.argumentList[0])

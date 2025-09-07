@@ -28,7 +28,9 @@ export class SheetToCodeConverter {
               parsedFormula: parser.parse(cell.formula),
             });
           } catch (error) {
-            console.warn(`Warning: Failed to parse formula in ${sheetName}!${cellRef}: ${cell.formula}. Error: ${error.message}`);
+            console.warn(
+              `Warning: Failed to parse formula in ${sheetName}!${cellRef}: ${cell.formula}. Error: ${error instanceof Error ? error.message : String(error)}`
+            );
             parsedCells.set(cellRef, cell);
           }
         } else {

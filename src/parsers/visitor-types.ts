@@ -59,8 +59,8 @@ export interface UnaryExpressionContext {
 }
 
 export interface PrimaryExpressionContext {
-  NumberToken?: IToken[];
-  StringToken?: IToken[];
+  Number?: IToken[];
+  String?: IToken[];
   True?: IToken[];
   False?: IToken[];
   cellOrRangeReference?: CstNode[];
@@ -78,7 +78,7 @@ export interface CellOrRangeReferenceContext {
 }
 
 export interface FunctionCallContext {
-  FunctionToken: IToken[];
+  Function: IToken[];
   LeftParen: IToken[];
   argumentList?: CstNode[];
   RightParen: IToken[];
