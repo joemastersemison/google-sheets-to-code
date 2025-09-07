@@ -430,6 +430,10 @@ def get_range(range_ref: str, cells: dict) -> list:
 
   private formatPythonValue(value: string | number | boolean | null): string {
     if (typeof value === "string") {
+      // Check if it's a numeric string
+      if (!isNaN(Number(value)) && value.trim() !== "") {
+        return value;
+      }
       if (value === "TRUE") {
         return "True";
       }

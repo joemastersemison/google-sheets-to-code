@@ -435,6 +435,10 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
 
   private formatValue(value: string | number | boolean | null): string {
     if (typeof value === "string") {
+      // Check if it's a numeric string
+      if (!isNaN(Number(value)) && value.trim() !== "") {
+        return value;
+      }
       if (value === "TRUE" || value === "FALSE") {
         return value.toLowerCase();
       }

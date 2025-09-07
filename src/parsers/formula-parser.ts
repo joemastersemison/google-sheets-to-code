@@ -1,6 +1,9 @@
 import { CstParser } from "chevrotain";
 import type { ParsedFormula } from "../types/index.js";
-import { FormulaVisitor } from "./formula-visitor.js";
+import {
+  createFormulaVisitor,
+  type FormulaVisitor,
+} from "./formula-visitor.js";
 import * as tokens from "./lexer.js";
 import { FormulaLexer } from "./lexer.js";
 
@@ -10,7 +13,7 @@ export class FormulaParser extends CstParser {
   constructor() {
     super(tokens.allTokens);
     this.performSelfAnalysis();
-    this.visitor = new FormulaVisitor();
+    this.visitor = createFormulaVisitor(this);
   }
 
   public formula = this.RULE("formula", () => {

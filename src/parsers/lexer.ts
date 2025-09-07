@@ -1,7 +1,13 @@
 import { createToken, Lexer } from "chevrotain";
 
-export const True = createToken({ name: "True", pattern: /TRUE/i });
-export const False = createToken({ name: "False", pattern: /FALSE/i });
+export const True = createToken({
+  name: "True",
+  pattern: /TRUE(?![A-Z0-9_])/i,
+});
+export const False = createToken({
+  name: "False",
+  pattern: /FALSE(?![A-Z0-9_])/i,
+});
 
 export const FunctionToken = createToken({
   name: "Function",
@@ -79,7 +85,6 @@ export const allTokens = [
   WhiteSpace,
   True,
   False,
-  FunctionToken,
   NotEquals,
   LessThanOrEqual,
   GreaterThanOrEqual,
@@ -105,6 +110,7 @@ export const allTokens = [
   SheetReference,
   RangeReference,
   CellReference,
+  FunctionToken,
   NumberToken,
   StringToken,
 ];
