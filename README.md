@@ -211,7 +211,17 @@ npm run lint
 
 # Type check
 npm run typecheck
+
+# Auto-fix formatting and linting
+npm run format:fix && npm run lint:fix
+
+# Run all checks
+npm run typecheck && npm run lint && npm run format && npm test
 ```
+
+### AI Assistant Instructions
+
+If you're using Claude or another AI assistant to help with this project, see [CLAUDE.md](./CLAUDE.md) for specific instructions on maintaining code quality.
 
 ## Architecture
 

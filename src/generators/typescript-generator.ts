@@ -419,7 +419,10 @@ export class TypeScriptGenerator {
   private generateHelperFunctions(): string {
     return `// Helper functions
 function sum(...args: any[]): number {
-  return args.flat(Infinity).reduce((a, b) => Number(a) + Number(b), 0);
+  return args.flat(2).reduce((acc, val) => {
+    const num = typeof val === 'number' ? val : Number(val);
+    return !isNaN(num) ? acc + num : acc;
+  }, 0);
 }
 
 function average(...args: any[]): number {
@@ -462,9 +465,9 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
   const [sheetName, range] = rangeRef.split('!');
   const [start, end] = range.split(':');
   
-  // Parse column and row from cell references
+  // Parse column and row from cell references (handles both relative A1 and absolute $A$1)
   const parseCell = (cellRef: string): [string, number] => {
-    const match = cellRef.match(/^([A-Z]+)(\\d+)$/);
+    const match = cellRef.match(/^\\$?([A-Z]+)\\$?(\\d+)$/);
     if (!match) throw new Error('Invalid cell reference: ' + cellRef);
     return [match[1], parseInt(match[2])];
   };

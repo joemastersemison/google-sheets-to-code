@@ -201,7 +201,14 @@ async function convertSheet(options: ConvertOptions) {
       writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
 
       // Compile the TypeScript file
-      execSync(`npx tsc --project ${tsconfigPath}`, { stdio: "pipe" });
+      try {
+        execSync(`npx tsc --project ${tsconfigPath}`, { stdio: "inherit" });
+      } catch (error: unknown) {
+        console.warn(
+          `⚠️  TypeScript compilation failed: ${(error as Error).message}`
+        );
+        // Don't exit, just warn and continue
+      }
 
       // Clean up temporary tsconfig
       execSync(`rm ${tsconfigPath}`, { stdio: "pipe" });

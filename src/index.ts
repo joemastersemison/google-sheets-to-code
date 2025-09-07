@@ -32,11 +32,47 @@ export class SheetToCodeConverter {
     for (const [_sheetName, sheet] of sheets) {
       for (const [_cellRef, cell] of sheet.cells) {
         if (cell.formula) {
-          // Look for sheet references in formula (Sheet!Cell pattern)
-          const sheetRefs = cell.formula.match(/([A-Za-z0-9_]+)!/g);
-          if (sheetRefs) {
-            sheetRefs.forEach((ref) => {
-              const sheetName = ref.replace("!", "");
+          const formula = cell.formula; // Store in variable to avoid TypeScript issues
+          // Look for sheet references in formula
+          // Matches both unquoted (Sheet1!A1) and quoted ('My Sheet'!A1) patterns
+          // Also handles escaped quotes within sheet names ('John''s Sheet'!A1)
+          const quotedSheetPattern = /'(?:[^']|'')+'/g;
+          const unquotedSheetPattern = /[A-Za-z0-9_]+(?=!)/g;
+
+          // First, extract quoted sheet names
+          const quotedMatches = formula.match(quotedSheetPattern);
+          if (quotedMatches) {
+            quotedMatches.forEach((match) => {
+              // Check if this quoted string is followed by !
+              const index = formula.indexOf(match);
+              if (index !== -1 && formula[index + match.length] === "!") {
+                // Remove surrounding quotes and unescape doubled quotes
+                const sheetName = match.slice(1, -1).replace(/''/g, "'");
+                if (!sheets.has(sheetName)) {
+                  referencedSheets.add(sheetName);
+                }
+              }
+            });
+          }
+
+          // Then, extract unquoted sheet names (but avoid matching already processed quoted ones)
+          let formulaWithoutQuoted = formula;
+          if (quotedMatches) {
+            // Temporarily replace quoted sections to avoid false matches
+            quotedMatches.forEach((match) => {
+              if (formula.indexOf(`${match}!`) !== -1) {
+                formulaWithoutQuoted = formulaWithoutQuoted.replace(
+                  `${match}!`,
+                  ""
+                );
+              }
+            });
+          }
+
+          const unquotedMatches =
+            formulaWithoutQuoted.match(unquotedSheetPattern);
+          if (unquotedMatches) {
+            unquotedMatches.forEach((sheetName) => {
               if (!sheets.has(sheetName)) {
                 referencedSheets.add(sheetName);
               }
