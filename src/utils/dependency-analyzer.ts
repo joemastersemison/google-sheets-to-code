@@ -136,8 +136,18 @@ export class DependencyAnalyzer {
         console.error(
           `⚠️  Unexpected cycle detected during topological sort at ${nodeId}`
         );
-        // Mark this node and don't process it
+
+        // Mark ALL nodes in the current visiting path as circular
+        // This ensures consistent state
+        for (const visitingNode of visiting) {
+          this.circularDependencies.add(visitingNode);
+        }
+        // Also mark the current node that triggered the cycle detection
         this.circularDependencies.add(nodeId);
+
+        // Mark as visited to prevent reprocessing
+        visited.add(nodeId);
+
         return false;
       }
 
@@ -148,7 +158,17 @@ export class DependencyAnalyzer {
         for (const dep of node.dependencies) {
           // Only visit dependencies that are cells with formulas
           if (this.dependencies.has(dep)) {
-            visit(dep);
+            const depResult = visit(dep);
+
+            // If we found a cycle while visiting dependencies,
+            // stop processing this branch
+            if (!depResult && this.circularDependencies.has(dep)) {
+              // Current node might be affected by the circular dependency
+              visiting.delete(nodeId);
+              visited.add(nodeId);
+              // Don't add to order since it depends on circular cells
+              return false;
+            }
           }
         }
       }
