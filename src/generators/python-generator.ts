@@ -368,7 +368,7 @@ def get_range(range_ref: str, cells: dict) -> list:
     
     def parse_cell(cell_ref: str) -> tuple:
         """Parse column and row from cell reference."""
-        match = re.match(r'^([A-Z]+)(d+)$', cell_ref)
+        match = re.match(r'^([A-Z]+)(\\d+)$', cell_ref)
         if not match:
             raise ValueError(f'Invalid cell reference: {cell_ref}')
         return match.group(1), int(match.group(2))
