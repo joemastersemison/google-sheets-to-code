@@ -41,16 +41,32 @@ All workflows run automatically on pushes and pull requests to ensure code quali
 
 ## Setup
 
-1. **Google Sheets API Credentials**:
+1. **Install dependencies**:
    ```bash
-   npm run cli setup
+   npm install
    ```
 
-2. **Create credentials.json**:
+2. **Setup Google Sheets API Credentials**:
+   ```bash
+   npm run cli -- setup
+   ```
+
+3. **Create credentials.json**:
+
+   **Option A: Service Account (Recommended for CLI/automation)**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Enable Google Sheets API
-   - Create service account credentials
+   - Create a service account and download the JSON key
+   - Save as `credentials.json` in project root
+   - Share your Google Sheet with the service account email
+
+   **Option B: OAuth2 (For interactive use)**
+   - Create OAuth2 credentials in Google Cloud Console
    - Download and save as `credentials.json`
+   - On first run, a browser will open for authorization
+   - Token will be saved for future use
+
+   **Note**: OAuth2 requires browser interaction on first run. For headless/CI environments, use a service account.
 
 ## Usage
 
@@ -58,7 +74,7 @@ All workflows run automatically on pushes and pull requests to ensure code quali
 
 ```bash
 # Basic conversion
-npm run cli convert \
+npm run cli -- convert \
   --url "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit" \
   --input-tabs "Input,Parameters" \
   --output-tabs "Results,Summary" \
@@ -66,10 +82,10 @@ npm run cli convert \
   --output-file spreadsheet-logic.ts
 
 # Using configuration file
-npm run cli convert --config config.json
+npm run cli -- convert --config config.json
 
 # Validate configuration
-npm run cli validate --config config.json
+npm run cli -- validate --config config.json
 ```
 
 ### Configuration File

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: this file generates code */
 import type { DependencyNode, ParsedFormula, Sheet } from "../types/index.js";
 import { DependencyAnalyzer } from "../utils/dependency-analyzer.js";
 
@@ -179,6 +180,95 @@ export class TypeScriptGenerator {
     // Add helper functions
     lines.push("");
     lines.push(this.generateHelperFunctions());
+
+    // Add CLI execution code
+    lines.push("");
+    lines.push("// CLI execution");
+    lines.push(
+      "// Check if running as main module (works for both CommonJS and ES modules)"
+    );
+    lines.push(
+      "const isMainModule = typeof require !== 'undefined' && require.main === module ||"
+    );
+    lines.push(
+      "  typeof import.meta !== 'undefined' && import.meta.url === `file://${process.argv[1]}`;"
+    );
+    lines.push("");
+    lines.push("if (isMainModule) {");
+    lines.push("  // Default input values from the spreadsheet");
+    lines.push("  const defaultInput: SpreadsheetInput = {");
+
+    for (const tabName of inputTabs) {
+      const sheet = sheets.get(tabName);
+      if (sheet) {
+        lines.push(`    ${this.sanitizePropertyName(tabName)}: {`);
+        for (const [cellRef, cell] of sheet.cells) {
+          if (!cell.formula) {
+            const value = this.formatValue(cell.value);
+            lines.push(`      ${cellRef}: ${value},`);
+          }
+        }
+        lines.push("    },");
+      }
+    }
+
+    lines.push("  };");
+    lines.push("");
+    lines.push("  // Parse command line arguments");
+    lines.push("  const args = process.argv.slice(2);");
+    lines.push("  let input = { ...defaultInput };");
+    lines.push("  ");
+    lines.push("  // Parse --input flag for JSON input");
+    lines.push("  const inputIndex = args.indexOf('--input');");
+    lines.push("  if (inputIndex !== -1 && args[inputIndex + 1]) {");
+    lines.push("    try {");
+    lines.push("      const customInput = JSON.parse(args[inputIndex + 1]);");
+    lines.push("      input = { ...input, ...customInput };");
+    lines.push("    } catch (e) {");
+    lines.push("      console.error('Error parsing input JSON:', e);");
+    lines.push("      process.exit(1);");
+    lines.push("    }");
+    lines.push("  }");
+    lines.push("");
+    lines.push("  // Calculate output");
+    lines.push("  const output = calculateSpreadsheet(input);");
+    lines.push("");
+    lines.push("  // Display results");
+    lines.push("  console.log('\\n📊 Spreadsheet Calculation Results:');");
+    lines.push("  console.log('=====================================\\n');");
+    lines.push("");
+    lines.push("  // Display input values");
+    lines.push("  console.log('📥 Input Values:');");
+
+    for (const tabName of inputTabs) {
+      lines.push(`  console.log('  ${tabName}:');`);
+      lines.push(
+        `  for (const [key, value] of Object.entries(input.${this.sanitizePropertyName(tabName)} || {})) {`
+      );
+      lines.push("    console.log(`    ${key}: ${value}`);");
+      lines.push("  }");
+    }
+
+    lines.push("");
+    lines.push("  // Display output values");
+    lines.push("  console.log('\\n📤 Output Values:');");
+
+    for (const tabName of outputTabs) {
+      lines.push(`  console.log('  ${tabName}:');`);
+      lines.push(
+        `  for (const [key, value] of Object.entries(output.${this.sanitizePropertyName(tabName)} || {})) {`
+      );
+      lines.push("    console.log(`    ${key}: ${value}`);");
+      lines.push("  }");
+    }
+
+    lines.push("");
+    lines.push("  // Output JSON format if --json flag is present");
+    lines.push("  if (args.includes('--json')) {");
+    lines.push("    console.log('\\n📋 JSON Output:');");
+    lines.push("    console.log(JSON.stringify(output, null, 2));");
+    lines.push("  }");
+    lines.push("}");
 
     return lines.join("\n");
   }

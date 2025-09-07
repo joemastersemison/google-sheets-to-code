@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
@@ -68,14 +69,38 @@ program
     console.log("Google Sheets API Setup");
     console.log("=====================");
     console.log();
+    console.log("Option 1: Service Account (Recommended for automation)");
+    console.log("-------------------------------------------------------");
     console.log(
       "1. Go to the Google Cloud Console: https://console.cloud.google.com/"
     );
     console.log("2. Create a new project or select an existing one");
-    console.log("3. Enable the Google Sheets API");
-    console.log("4. Create credentials (Service Account or OAuth2)");
-    console.log("5. Download the credentials JSON file");
-    console.log('6. Save it as "credentials.json" in your project root');
+    console.log("3. Enable the Google Sheets API:");
+    console.log("   - Go to APIs & Services > Library");
+    console.log("   - Search for 'Google Sheets API' and enable it");
+    console.log("4. Create a Service Account:");
+    console.log("   - Go to APIs & Services > Credentials");
+    console.log("   - Click 'Create Credentials' > 'Service Account'");
+    console.log("   - Fill in the service account details");
+    console.log("5. Create and download the key:");
+    console.log("   - Click on the created service account");
+    console.log("   - Go to 'Keys' tab > 'Add Key' > 'Create new key'");
+    console.log("   - Select 'JSON' format");
+    console.log(
+      '6. Save the downloaded file as "credentials.json" in your project root'
+    );
+    console.log("7. Share your Google Sheet with the service account email");
+    console.log("   (found in the JSON file as 'client_email')");
+    console.log();
+    console.log("Option 2: OAuth2 (For user authentication)");
+    console.log("------------------------------------------");
+    console.log("1. Follow steps 1-3 from Option 1");
+    console.log("2. Create OAuth2 credentials:");
+    console.log("   - Go to APIs & Services > Credentials");
+    console.log("   - Click 'Create Credentials' > 'OAuth client ID'");
+    console.log("   - Application type: 'Desktop app'");
+    console.log("3. Download the credentials JSON file");
+    console.log('4. Save it as "credentials.json" in your project root');
     console.log();
     console.log("For detailed instructions, visit:");
     console.log("https://developers.google.com/sheets/api/quickstart/nodejs");
@@ -129,12 +154,8 @@ async function convertSheet(options: ConvertOptions) {
     console.log("Credentials file:", options.credentials);
   }
 
-  // Convert the sheet
-  const converter = new SheetToCodeConverter(config);
-
-  if (options.verbose) {
-    console.log("Fetching sheet data...");
-  }
+  // Convert the sheet (enable verbose mode by default to show progress)
+  const converter = new SheetToCodeConverter(config, true);
 
   const generatedCode = await converter.convert();
 
@@ -147,8 +168,56 @@ async function convertSheet(options: ConvertOptions) {
 
   // Write output
   writeFileSync(outputFile, generatedCode, "utf8");
-
   console.log(`✅ Successfully generated code: ${outputFile}`);
+
+  // If TypeScript, also compile to JavaScript
+  if (config.outputLanguage === "typescript") {
+    try {
+      console.log("🔨 Compiling TypeScript to JavaScript...");
+
+      // Generate a simple tsconfig if it doesn't exist in the output directory
+      const outputDir =
+        outputFile.substring(0, outputFile.lastIndexOf("/")) || ".";
+      const tsconfigPath = `${outputDir}/tsconfig.generated.json`;
+
+      const tsconfig = {
+        compilerOptions: {
+          target: "ES2020",
+          module: "ES2020",
+          lib: ["ES2020"],
+          outDir: outputDir,
+          rootDir: outputDir,
+          strict: true,
+          esModuleInterop: true,
+          skipLibCheck: true,
+          forceConsistentCasingInFileNames: true,
+          declaration: true,
+          declarationMap: true,
+          moduleResolution: "node",
+        },
+        files: [outputFile],
+      };
+
+      writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2), "utf8");
+
+      // Compile the TypeScript file
+      execSync(`npx tsc --project ${tsconfigPath}`, { stdio: "pipe" });
+
+      // Clean up temporary tsconfig
+      execSync(`rm ${tsconfigPath}`, { stdio: "pipe" });
+
+      const jsFile = outputFile.replace(/\.ts$/, ".js");
+      const dtsFile = outputFile.replace(/\.ts$/, ".d.ts");
+
+      console.log(`✅ Successfully compiled to JavaScript: ${jsFile}`);
+      console.log(`✅ Type definitions generated: ${dtsFile}`);
+    } catch (error) {
+      console.warn(
+        `⚠️  Could not compile TypeScript to JavaScript: ${(error as Error).message}`
+      );
+      console.log(`💡 You can manually compile it with: npx tsc ${outputFile}`);
+    }
+  }
 
   if (options.verbose) {
     console.log(`Output language: ${config.outputLanguage}`);

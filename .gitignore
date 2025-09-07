@@ -10,3 +10,6 @@ coverage/
 *.swo
 credentials.json
 token.json
+config.json
+// output files
+spreadsheet-logic.*

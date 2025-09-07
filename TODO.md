@@ -8,109 +8,123 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Create directory structure and type definitions
 - [x] Design main converter architecture
 
-## Phase 2: Google Sheets Integration 🚧
+## Phase 2: Google Sheets Integration ✅
 - [x] Implement Google Sheets API client
-- [ ] Handle authentication flow (OAuth2)
-- [ ] Create credentials.json setup instructions
-- [ ] Add error handling for API rate limits
-- [ ] Support for different sheet ranges and named ranges
+- [x] Handle authentication flow (OAuth2 and Service Account)
+- [x] Create credentials.json setup instructions
+- [x] Add error handling for API rate limits
+- [x] Support for different sheet ranges and named ranges
+- [x] Auto-detect and fetch referenced sheets
 
-## Phase 3: Formula Parser 📝
+## Phase 3: Formula Parser ✅
 ### Lexer Implementation
-- [ ] Define token types (functions, operators, references, literals)
-- [ ] Handle string literals with quotes
-- [ ] Parse numbers (integers, decimals, scientific notation)
-- [ ] Recognize cell references (A1, $A$1, Sheet1!A1)
-- [ ] Recognize range references (A1:B10)
-- [ ] Handle array formulas
+- [x] Define token types (functions, operators, references, literals)
+- [x] Handle string literals with quotes
+- [x] Parse numbers (integers, decimals, scientific notation)
+- [x] Recognize cell references (A1, $A$1, Sheet1!A1)
+- [x] Recognize range references (A1:B10, A:B)
+- [x] Handle array formulas
 
 ### Parser Implementation
-- [ ] Build expression parser using Chevrotain
-- [ ] Support arithmetic operators (+, -, *, /, ^)
-- [ ] Support comparison operators (=, <>, <, >, <=, >=)
-- [ ] Support logical operators (AND, OR, NOT)
-- [ ] Parse function calls (SUM, IF, VLOOKUP, etc.)
-- [ ] Handle nested expressions
-- [ ] Support array/matrix operations
+- [x] Build expression parser using Chevrotain
+- [x] Support arithmetic operators (+, -, *, /, ^)
+- [x] Support comparison operators (=, <>, <, >, <=, >=)
+- [x] Support logical operators (AND, OR, NOT)
+- [x] Parse function calls (SUM, IF, VLOOKUP, etc.)
+- [x] Handle nested expressions
+- [x] Support array/matrix operations
 
 ### Function Library
-- [ ] Implement common math functions (SUM, AVERAGE, MIN, MAX, COUNT)
-- [ ] Implement lookup functions (VLOOKUP, HLOOKUP, INDEX, MATCH)
-- [ ] Implement logical functions (IF, IFS, AND, OR, NOT)
-- [ ] Implement text functions (CONCATENATE, LEFT, RIGHT, MID, LEN)
-- [ ] Implement date functions (TODAY, NOW, DATE, DATEVALUE)
+- [x] Implement common math functions (SUM, AVERAGE, MIN, MAX, COUNT)
+- [x] Implement lookup functions (VLOOKUP, HLOOKUP, INDEX, MATCH)
+- [x] Implement logical functions (IF, IFS, AND, OR, NOT)
+- [x] Implement text functions (CONCATENATE, LEFT, RIGHT, MID, LEN)
+- [x] Implement date functions (TODAY, NOW, DATE, DATEVALUE)
 - [ ] Implement financial functions (PMT, FV, PV, RATE)
 
-## Phase 4: Dependency Analysis 🔗
-- [ ] Build cell dependency graph
-- [ ] Detect circular references
-- [ ] Determine calculation order
-- [ ] Handle cross-sheet references
-- [ ] Optimize for minimal recalculation
-- [ ] Support dynamic ranges
+## Phase 4: Dependency Analysis ✅
+- [x] Build cell dependency graph
+- [x] Detect circular references
+- [x] Determine calculation order
+- [x] Handle cross-sheet references
+- [x] Optimize for minimal recalculation
+- [x] Support dynamic ranges
 
-## Phase 5: Code Generation 🎯
+## Phase 5: Code Generation ✅
 ### TypeScript Generator
-- [ ] Generate type definitions for input/output
-- [ ] Create function signatures
-- [ ] Implement formula translations
-- [ ] Handle array operations
-- [ ] Generate helper functions
-- [ ] Add JSDoc comments
-- [ ] Export as ES modules
+- [x] Generate type definitions for input/output
+- [x] Create function signatures
+- [x] Implement formula translations
+- [x] Handle array operations
+- [x] Generate helper functions
+- [x] Add JSDoc comments
+- [x] Export as ES modules
+- [x] Add CLI execution support
+- [x] Auto-compile to JavaScript
 
 ### Python Generator
-- [ ] Generate type hints
-- [ ] Create function definitions
-- [ ] Implement formula translations
-- [ ] Handle numpy array operations
-- [ ] Generate helper functions
-- [ ] Add docstrings
+- [x] Generate type hints
+- [x] Create function definitions
+- [x] Implement formula translations
+- [x] Handle numpy array operations
+- [x] Generate helper functions
+- [x] Add docstrings
+- [x] Add CLI execution support
 - [ ] Create pip-installable package
 
 ### Common Features
-- [ ] Preserve calculation precision
-- [ ] Handle empty cells/null values
-- [ ] Implement error propagation (#DIV/0!, #VALUE!, etc.)
-- [ ] Generate readable variable names
-- [ ] Add source formula as comments
+- [x] Preserve calculation precision
+- [x] Handle empty cells/null values
+- [x] Implement error propagation (#DIV/0!, #VALUE!, etc.)
+- [x] Generate readable variable names
+- [x] Add source formula as comments
 
-## Phase 6: CLI Interface 🖥️
-- [ ] Create command-line tool using Commander.js
-- [ ] Add input validation
-- [ ] Support config files
-- [ ] Add progress indicators
-- [ ] Implement verbose/debug modes
+## Phase 6: CLI Interface ✅
+- [x] Create command-line tool using Commander.js
+- [x] Add input validation
+- [x] Support config files
+- [x] Add progress indicators
+- [x] Implement verbose/debug modes
+- [x] Add CLI execution to generated files
 - [ ] Add --watch mode for development
 
-## Phase 7: Testing & Quality 🧪
+## Phase 7: Testing & Quality ✅
 ### Unit Tests
-- [ ] Test formula parser with complex expressions
-- [ ] Test each function implementation
-- [ ] Test dependency analyzer edge cases
-- [ ] Test code generators output
+- [x] Test formula parser with complex expressions
+- [x] Test each function implementation
+- [x] Test dependency analyzer edge cases
+- [x] Test code generators output
 
 ### Integration Tests
-- [ ] Test with real Google Sheets
-- [ ] Test various formula combinations
-- [ ] Test performance with large sheets
-- [ ] Test error handling
+- [x] Test with real Google Sheets
+- [x] Test various formula combinations
+- [x] Test performance with large sheets
+- [x] Test error handling
+
+### CI/CD
+- [x] GitHub Actions for testing
+- [x] Linting with Biome
+- [x] Format checking
+- [x] Pre-commit hooks with Husky
 
 ### Example Sheets
+- [x] Create basic calculation example
+- [x] Test with conditional logic (IF statements)
+- [x] Test with named ranges
 - [ ] Create financial model example
 - [ ] Create data analysis example
 - [ ] Create inventory tracking example
-- [ ] Document limitations
+- [x] Document limitations
 
-## Phase 8: Documentation 📚
-- [ ] Write README with quick start
-- [ ] Create API documentation
-- [ ] Add Google Sheets API setup guide
-- [ ] Document supported formulas
-- [ ] Add troubleshooting guide
-- [ ] Create example use cases
+## Phase 8: Documentation ✅
+- [x] Write README with quick start
+- [x] Create API documentation
+- [x] Add Google Sheets API setup guide
+- [x] Document supported formulas
+- [x] Add troubleshooting guide
+- [x] Create example use cases
 
-## Phase 9: Advanced Features 🚀
+## Phase 9: Advanced Features 🚧
 - [ ] Support for pivot tables
 - [ ] Handle conditional formatting logic
 - [ ] Support for charts/visualizations
@@ -120,9 +134,9 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [ ] Add incremental update mode
 - [ ] Generate unit tests for output code
 
-## Phase 10: Optimization & Polish ✨
-- [ ] Optimize for large spreadsheets
-- [ ] Add caching for API calls
+## Phase 10: Optimization & Polish 🚧
+- [x] Optimize for large spreadsheets
+- [x] Add caching for API calls
 - [ ] Implement parallel processing
 - [ ] Add memory usage optimizations
 - [ ] Create benchmarks
@@ -130,11 +144,11 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [ ] Support for Google Sheets add-ons
 
 ## Technical Decisions
-- **Parser**: Chevrotain for robust, maintainable grammar
-- **AST**: Custom nodes for spreadsheet-specific constructs  
-- **Dependencies**: Track both direct and transitive dependencies
-- **Code Style**: Follow target language conventions
-- **Error Handling**: Preserve spreadsheet error semantics
+- **Parser**: Chevrotain for robust, maintainable grammar ✅
+- **AST**: Custom nodes for spreadsheet-specific constructs ✅
+- **Dependencies**: Track both direct and transitive dependencies ✅
+- **Code Style**: Follow target language conventions ✅
+- **Error Handling**: Preserve spreadsheet error semantics ✅
 
 ## Known Limitations
 - Complex array formulas may need manual review
@@ -142,3 +156,15 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - Formatting and visual elements are not preserved
 - Real-time collaboration features not supported
 - External data connections need special handling
+
+## Recent Accomplishments 🎉
+- ✅ Full named ranges support with automatic resolution
+- ✅ Automatic detection and fetching of referenced sheets
+- ✅ CLI execution support in generated code
+- ✅ Support for both OAuth2 and Service Account authentication
+- ✅ Comprehensive test suite with 121 passing tests
+- ✅ GitHub Actions CI/CD pipeline
+- ✅ Code quality tools (Biome, Husky, lint-staged)
+- ✅ Progress indicators and verbose logging
+- ✅ JSON input/output support in generated files
+- ✅ Automatic TypeScript to JavaScript compilation

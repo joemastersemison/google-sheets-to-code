@@ -139,6 +139,92 @@ export class PythonGenerator {
 
     lines.push(this.indent("return output"));
     this.indentLevel--;
+    lines.push("");
+    lines.push("");
+
+    // Add CLI execution code
+    lines.push("# CLI execution");
+    lines.push("if __name__ == '__main__':");
+    lines.push("    import sys");
+    lines.push("    import json");
+    lines.push("");
+    lines.push("    # Default input values from the spreadsheet");
+    lines.push("    default_input = {");
+
+    for (const tabName of inputTabs) {
+      const sheet = sheets.get(tabName);
+      if (sheet) {
+        lines.push(`        '${tabName}': {`);
+        for (const [cellRef, cell] of sheet.cells) {
+          if (!cell.formula) {
+            const value = this.formatPythonValue(cell.value);
+            lines.push(`            '${cellRef}': ${value},`);
+          }
+        }
+        lines.push("        },");
+      }
+    }
+
+    lines.push("    }");
+    lines.push("");
+    lines.push("    # Parse command line arguments");
+    lines.push("    input_data = dict(default_input)");
+    lines.push("    ");
+    lines.push("    # Parse --input flag for JSON input");
+    lines.push("    if '--input' in sys.argv:");
+    lines.push("        try:");
+    lines.push("            input_index = sys.argv.index('--input')");
+    lines.push("            if input_index + 1 < len(sys.argv):");
+    lines.push(
+      "                custom_input = json.loads(sys.argv[input_index + 1])"
+    );
+    lines.push("                for key in custom_input:");
+    lines.push("                    if key in input_data:");
+    lines.push(
+      "                        input_data[key].update(custom_input[key])"
+    );
+    lines.push("                    else:");
+    lines.push("                        input_data[key] = custom_input[key]");
+    lines.push("        except (json.JSONDecodeError, IndexError) as e:");
+    lines.push(
+      "            print(f'Error parsing input JSON: {e}', file=sys.stderr)"
+    );
+    lines.push("            sys.exit(1)");
+    lines.push("");
+    lines.push("    # Calculate output");
+    lines.push("    output = calculate_spreadsheet(input_data)");
+    lines.push("");
+    lines.push("    # Display results");
+    lines.push("    print('\\n📊 Spreadsheet Calculation Results:')");
+    lines.push("    print('=' * 37)");
+    lines.push("    print()");
+    lines.push("");
+    lines.push("    # Display input values");
+    lines.push("    print('📥 Input Values:')");
+
+    for (const tabName of inputTabs) {
+      lines.push(`    print('  ${tabName}:')`);
+      lines.push(
+        `    for key, value in input_data.get('${tabName}', {}).items():`
+      );
+      lines.push("        print(f'    {key}: {value}')");
+    }
+
+    lines.push("");
+    lines.push("    # Display output values");
+    lines.push("    print('\\n📤 Output Values:')");
+
+    for (const tabName of outputTabs) {
+      lines.push(`    print('  ${tabName}:')`);
+      lines.push(`    for key, value in output.get('${tabName}', {}).items():`);
+      lines.push("        print(f'    {key}: {value}')");
+    }
+
+    lines.push("");
+    lines.push("    # Output JSON format if --json flag is present");
+    lines.push("    if '--json' in sys.argv:");
+    lines.push("        print('\\n📋 JSON Output:')");
+    lines.push("        print(json.dumps(output, indent=2))");
 
     return lines.join("\n");
   }
