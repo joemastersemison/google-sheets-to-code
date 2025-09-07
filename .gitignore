@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+coverage/
+.vscode/
+.idea/
+*.swp
+*.swo
+credentials.json
+token.json
+config.json
+// output files
+spreadsheet-logic.*
