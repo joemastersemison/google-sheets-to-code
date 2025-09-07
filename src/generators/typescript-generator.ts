@@ -325,13 +325,34 @@ export class TypeScriptGenerator {
   }
 
   private generateReferenceCode(ref: string, currentSheet: string): string {
-    if (ref.includes(":")) {
+    // Normalize the reference to handle quoted sheet names
+    let normalizedRef = ref;
+
+    // If reference includes sheet name (has !)
+    if (ref.includes("!")) {
+      // Handle quoted sheet names: 'My Sheet'!A1
+      if (ref.startsWith("'")) {
+        const exclamationIndex = ref.indexOf("!");
+        const sheetPart = ref.substring(0, exclamationIndex);
+        const cellPart = ref.substring(exclamationIndex + 1);
+
+        // Remove surrounding quotes and unescape doubled quotes
+        const sheetName = sheetPart.slice(1, -1).replace(/''/g, "'");
+        normalizedRef = `${sheetName}!${cellPart}`;
+      }
+    }
+
+    if (normalizedRef.includes(":")) {
       // Range reference
-      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
+      const fullRef = normalizedRef.includes("!")
+        ? normalizedRef
+        : `${currentSheet}!${normalizedRef}`;
       return `getRange('${fullRef}', cells)`;
     } else {
       // Cell reference
-      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
+      const fullRef = normalizedRef.includes("!")
+        ? normalizedRef
+        : `${currentSheet}!${normalizedRef}`;
       return `cells['${fullRef}']`;
     }
   }
@@ -369,7 +390,7 @@ export class TypeScriptGenerator {
         case "*":
           return `(${left} * ${right})`;
         case "/":
-          return `(${left} / ${right})`;
+          return `safeDivide(${left}, ${right})`;
         case "^":
           return `Math.pow(${left}, ${right})`;
         case "&":
@@ -416,7 +437,7 @@ export class TypeScriptGenerator {
       case "COUNT":
         return `count(${args.join(", ")})`;
       case "IF":
-        return `(${args[0]} ? ${args[1]} : ${args[2] || "false"})`;
+        return `(${args[0]} ? ${args[1]} : ${args.length > 2 ? args[2] : "false"})`;
       case "CONCATENATE":
         return `concatenate(${args.join(", ")})`;
       case "VLOOKUP":
@@ -452,6 +473,10 @@ function sum(...args: any[]): number {
     const num = typeof val === 'number' ? val : Number(val);
     return !isNaN(num) ? acc + num : acc;
   }, 0);
+}
+
+function safeDivide(numerator: number, denominator: number): number | string {
+  return denominator === 0 ? '#DIV/0!' : numerator / denominator;
 }
 
 function average(...args: any[]): number {

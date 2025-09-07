@@ -279,13 +279,34 @@ export class PythonGenerator {
   }
 
   private generateReferenceCode(ref: string, currentSheet: string): string {
-    if (ref.includes(":")) {
+    // Normalize the reference to handle quoted sheet names
+    let normalizedRef = ref;
+
+    // If reference includes sheet name (has !)
+    if (ref.includes("!")) {
+      // Handle quoted sheet names: 'My Sheet'!A1
+      if (ref.startsWith("'")) {
+        const exclamationIndex = ref.indexOf("!");
+        const sheetPart = ref.substring(0, exclamationIndex);
+        const cellPart = ref.substring(exclamationIndex + 1);
+
+        // Remove surrounding quotes and unescape doubled quotes
+        const sheetName = sheetPart.slice(1, -1).replace(/''/g, "'");
+        normalizedRef = `${sheetName}!${cellPart}`;
+      }
+    }
+
+    if (normalizedRef.includes(":")) {
       // Range reference
-      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
+      const fullRef = normalizedRef.includes("!")
+        ? normalizedRef
+        : `${currentSheet}!${normalizedRef}`;
       return `get_range('${fullRef}', cells)`;
     } else {
       // Cell reference
-      const fullRef = ref.includes("!") ? ref : `${currentSheet}!${ref}`;
+      const fullRef = normalizedRef.includes("!")
+        ? normalizedRef
+        : `${currentSheet}!${normalizedRef}`;
       return `cells.get('${fullRef}')`;
     }
   }
@@ -370,7 +391,7 @@ export class PythonGenerator {
       case "COUNT":
         return `count_values(${args.join(", ")})`;
       case "IF":
-        return `(${args[1]} if ${args[0]} else ${args[2] || "False"})`;
+        return `(${args[1]} if ${args[0]} else ${args.length > 2 ? args[2] : "False"})`;
       case "CONCATENATE":
         return `concatenate_values(${args.join(", ")})`;
       case "VLOOKUP":

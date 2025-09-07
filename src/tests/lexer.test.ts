@@ -129,10 +129,19 @@ describe("FormulaLexer", () => {
     });
 
     it("should tokenize sheet names with spaces", () => {
-      const result = FormulaLexer.tokenize("My Sheet!A1");
+      // Sheet names with spaces must be quoted in Google Sheets
+      const result = FormulaLexer.tokenize("'My Sheet'!A1");
 
       expect(result.tokens[0].tokenType.name).toBe("SheetReference");
-      expect(result.tokens[0].image).toBe("My Sheet!");
+      expect(result.tokens[0].image).toBe("'My Sheet'!");
+    });
+
+    it("should tokenize sheet names with escaped quotes", () => {
+      // Sheet names with apostrophes use doubled quotes for escaping
+      const result = FormulaLexer.tokenize("'John''s Data'!A1");
+
+      expect(result.tokens[0].tokenType.name).toBe("SheetReference");
+      expect(result.tokens[0].image).toBe("'John''s Data'!");
     });
   });
 

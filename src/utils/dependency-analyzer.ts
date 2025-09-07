@@ -65,7 +65,31 @@ export class DependencyAnalyzer {
   private normalizeReference(ref: string, currentSheet: string): string {
     // Handle sheet references
     if (ref.includes("!")) {
-      return ref;
+      // Handle quoted sheet names: 'My Sheet'!A1
+      if (ref.startsWith("'")) {
+        const exclamationIndex = ref.indexOf("!");
+        // Extract sheet name (including quotes) and cell reference
+        const sheetPart = ref.substring(0, exclamationIndex);
+        const cellPart = ref.substring(exclamationIndex + 1);
+
+        // Remove surrounding quotes and unescape doubled quotes
+        const sheetName = sheetPart.slice(1, -1).replace(/''/g, "'");
+
+        // Normalize the cell reference part
+        if (cellPart.includes(":")) {
+          const [start, end] = cellPart.split(":");
+          return `${sheetName}!${this.normalizeCellRef(start)}:${this.normalizeCellRef(end)}`;
+        }
+        return `${sheetName}!${this.normalizeCellRef(cellPart)}`;
+      }
+
+      // Handle unquoted sheet names
+      const [sheetName, cellRef] = ref.split("!");
+      if (cellRef.includes(":")) {
+        const [start, end] = cellRef.split(":");
+        return `${sheetName}!${this.normalizeCellRef(start)}:${this.normalizeCellRef(end)}`;
+      }
+      return `${sheetName}!${this.normalizeCellRef(cellRef)}`;
     }
 
     // Handle range references
@@ -86,29 +110,35 @@ export class DependencyAnalyzer {
   }
 
   getCalculationOrder(): string[] {
+    // Always ensure circular dependencies are detected first
+    // This is idempotent, so calling it multiple times is safe
+    this.detectCircularDependencies();
+
     const visited = new Set<string>();
     const order: string[] = [];
     const visiting = new Set<string>();
 
-    const visit = (nodeId: string) => {
-      if (visited.has(nodeId)) return;
+    const visit = (nodeId: string): boolean => {
+      // Already processed
+      if (visited.has(nodeId)) return true;
 
-      // Skip if this cell is part of a circular dependency
-      // It will be calculated with a default/error value
+      // Skip entirely if this cell is part of a circular dependency
+      // These will be handled separately with #REF! errors
       if (this.circularDependencies.has(nodeId)) {
         visited.add(nodeId);
-        order.push(nodeId);
-        return;
+        // Don't add to order - circular cells are handled separately
+        return false;
       }
 
+      // Currently visiting - this means we've found an undetected cycle
       if (visiting.has(nodeId)) {
         // This shouldn't happen if detectCircularDependencies() worked correctly
-        // But if it does, mark as circular and continue
+        console.error(
+          `⚠️  Unexpected cycle detected during topological sort at ${nodeId}`
+        );
+        // Mark this node and don't process it
         this.circularDependencies.add(nodeId);
-        console.warn(`⚠️  Late circular dependency detection for ${nodeId}`);
-        visited.add(nodeId);
-        order.push(nodeId);
-        return;
+        return false;
       }
 
       visiting.add(nodeId);
@@ -117,11 +147,7 @@ export class DependencyAnalyzer {
       if (node) {
         for (const dep of node.dependencies) {
           // Only visit dependencies that are cells with formulas
-          // Skip circular dependencies
-          if (
-            this.dependencies.has(dep) &&
-            !this.circularDependencies.has(dep)
-          ) {
+          if (this.dependencies.has(dep)) {
             visit(dep);
           }
         }
@@ -129,18 +155,36 @@ export class DependencyAnalyzer {
 
       visiting.delete(nodeId);
       visited.add(nodeId);
-      order.push(nodeId);
+
+      // Only add to order if not circular
+      if (!this.circularDependencies.has(nodeId)) {
+        order.push(nodeId);
+      }
+
+      return true;
     };
 
-    // Visit all nodes
+    // First, visit all non-circular nodes
     for (const nodeId of this.dependencies.keys()) {
-      visit(nodeId);
+      if (!this.circularDependencies.has(nodeId)) {
+        visit(nodeId);
+      }
+    }
+
+    // Then add circular dependency nodes at the end
+    // They'll be calculated as #REF! but we need them in the order
+    for (const nodeId of this.circularDependencies) {
+      if (this.dependencies.has(nodeId)) {
+        order.push(nodeId);
+      }
     }
 
     return order;
   }
 
   detectCircularDependencies() {
+    // If we've already detected cycles, don't re-run
+    // unless the dependency graph has changed
     const visited = new Set<string>();
     const recursionStack = new Set<string>();
     const path: string[] = [];
