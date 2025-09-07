@@ -27,7 +27,7 @@ export const CellReference = createToken({
 
 export const RangeReference = createToken({
   name: "RangeReference",
-  pattern: /\$?[A-Z]+\$?[0-9]+:\$?[A-Z]+\$?[0-9]+/i,
+  pattern: /\$?[A-Z]+\$?[0-9]+:\$?[A-Z]+\$?[0-9]+|\$?[A-Z]+:\$?[A-Z]+/i,
 });
 
 export const NumberToken = createToken({
