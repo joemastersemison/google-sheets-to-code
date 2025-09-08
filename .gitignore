@@ -11,5 +11,9 @@ coverage/
 credentials.json
 token.json
 config.json
+pyproject.toml
+setup.py
+
 // output files
 spreadsheet-logic.*
+generated*.*

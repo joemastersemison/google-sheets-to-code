@@ -14,8 +14,21 @@ Convert Google Sheets formulas and logic into executable TypeScript or Python co
 
 ## Installation
 
+### Node.js/TypeScript Version
+
 ```bash
 npm install
+```
+
+### Python Package (for generated Python code)
+
+```bash
+# Install from source
+pip install -e .
+
+# Or build and install
+python -m build
+pip install dist/google_sheets_to_code-1.0.0-py3-none-any.whl
 ```
 
 ## Development Setup
@@ -84,6 +97,10 @@ npm run cli -- convert \
 # Using configuration file
 npm run cli -- convert --config config.json
 
+# Watch mode - automatically regenerate on changes
+npm run cli -- convert --config config.json --watch
+npm run cli -- convert --config config.json --watch --watch-interval 60
+
 # Validate configuration
 npm run cli -- validate --config config.json
 ```
@@ -117,6 +134,53 @@ const code = await converter.convert();
 console.log(code);
 ```
 
+### Example Configurations
+
+The `examples/` directory contains complete examples with configurations, templates, and ready-to-use XLSX files:
+
+- **`financial-model`**: Loan calculations with PMT, FV, PV, NPV, IRR functions
+  - JSON configuration file
+  - Excel file ready for Google Sheets import
+  - Full documentation in template markdown
+  
+- **`data-analysis`**: Statistical analysis with 100 rows of sample data
+  - Aggregation functions (AVERAGE, MEDIAN, STDEV, PERCENTILE)
+  - Conditional analysis (COUNTIF, SUMIF, AVERAGEIF)
+  - Outlier detection and Z-scores
+  
+- **`inventory-tracking`**: Complete inventory management system
+  - Stock level calculations from transaction history
+  - Reorder point determination with safety stock
+  - ABC classification and EOQ calculations
+  - Automated alerts for critical stock levels
+
+#### Quick Start with Examples
+
+1. **Upload XLSX to Google Sheets**:
+   ```bash
+   # The examples/ directory includes ready-to-use Excel files
+   # Upload financial-model.xlsx, data-analysis.xlsx, or inventory-tracking.xlsx
+   # to Google Sheets via File > Import
+   ```
+
+2. **Run the converter**:
+   ```bash
+   # Convert financial model to TypeScript
+   npm run cli -- convert --config examples/financial-model.json
+   
+   # Convert data analysis to Python
+   npm run cli -- convert --config examples/data-analysis.json
+   
+   # Convert inventory tracking with watch mode
+   npm run cli -- convert --config examples/inventory-tracking.json --watch
+   ```
+
+3. **Regenerate XLSX files** (if needed):
+   ```bash
+   cd examples
+   python3 generate_xlsx.py
+   ```
+
 ## Supported Features
 
 ### Formulas
@@ -124,14 +188,18 @@ console.log(code);
 - ✅ Comparison operators (`=`, `<>`, `<`, `>`, `<=`, `>=`)
 - ✅ String concatenation (`&`)
 - ✅ Cell references (`A1`, `$A$1`, `Sheet1!A1`)
-- ✅ Range references (`A1:B10`, `Sheet1!A1:B10`)
+- ✅ Range references (`A1:B10`, `Sheet1!A1:B10`, `A:A`, `D:D`)
+- ✅ Named ranges (automatically resolved from Google Sheets)
+- ✅ Cross-sheet references
 
 ### Functions
-- ✅ Math: `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `ROUND`, `ABS`, `SQRT`
-- ✅ Logic: `IF`, `AND`, `OR`, `NOT`
-- ✅ Text: `CONCATENATE`, `LEN`, `UPPER`, `LOWER`, `TRIM`
-- ✅ Lookup: `VLOOKUP`, `HLOOKUP`, `INDEX`, `MATCH`
+- ✅ Math: `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `COUNTA`, `ROUND`, `ABS`, `SQRT`
+- ✅ Financial: `PMT`, `FV`, `PV`, `RATE`, `NPV`, `IRR`
+- ✅ Logic: `IF`, `AND`, `OR`, `NOT`, `IFS`
+- ✅ Text: `CONCATENATE`, `LEN`, `UPPER`, `LOWER`, `TRIM`, `LEFT`, `RIGHT`, `MID`
+- ✅ Lookup: `VLOOKUP`, `HLOOKUP`, `INDEX`, `MATCH`, `INDIRECT`
 - ✅ Date: `TODAY`, `NOW`, `DATE`
+- ✅ Statistical: `STDEV`, `COUNTIF`, `SUMIF`, `SUMIFS`, `RANK`, `SMALL`, `LARGE`, `MEDIAN`, `PERCENTILE`
 - ✅ Array literals: `{1,2,3;4,5,6}`
 
 ## Generated Code Examples

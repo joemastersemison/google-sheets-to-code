@@ -27,7 +27,7 @@
     "typescript",
     "python"
   ],
-  "author": "",
+  "author": "Joe Emison",
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",

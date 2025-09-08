@@ -15,6 +15,8 @@ interface ConvertOptions {
   config?: string;
   credentials: string;
   verbose?: boolean;
+  watch?: boolean;
+  watchInterval?: string;
 }
 
 interface ValidateOptions {
@@ -31,12 +33,9 @@ program
 program
   .command("convert")
   .description("Convert a Google Sheets document to code")
-  .requiredOption("-u, --url <url>", "Google Sheets URL")
-  .requiredOption(
-    "-i, --input-tabs <tabs>",
-    "Comma-separated list of input tab names"
-  )
-  .requiredOption(
+  .option("-u, --url <url>", "Google Sheets URL")
+  .option("-i, --input-tabs <tabs>", "Comma-separated list of input tab names")
+  .option(
     "-o, --output-tabs <tabs>",
     "Comma-separated list of output tab names"
   )
@@ -53,9 +52,19 @@ program
     "./credentials.json"
   )
   .option("--verbose", "Enable verbose output")
+  .option("--watch", "Watch for changes and regenerate code automatically")
+  .option(
+    "--watch-interval <seconds>",
+    "Interval between checks when watching (in seconds)",
+    "30"
+  )
   .action(async (options: ConvertOptions) => {
     try {
-      await convertSheet(options);
+      if (options.watch) {
+        await watchAndConvert(options);
+      } else {
+        await convertSheet(options);
+      }
     } catch (error) {
       console.error("Error:", (error as Error).message);
       process.exit(1);
@@ -131,6 +140,20 @@ async function convertSheet(options: ConvertOptions) {
   if (options.config) {
     config = loadConfig(options.config);
   } else {
+    // Validate that required options are provided when not using config
+    if (!options.url) {
+      console.error("Error: Either --config or --url is required");
+      process.exit(1);
+    }
+    if (!options.inputTabs) {
+      console.error("Error: Either --config or --input-tabs is required");
+      process.exit(1);
+    }
+    if (!options.outputTabs) {
+      console.error("Error: Either --config or --output-tabs is required");
+      process.exit(1);
+    }
+
     config = {
       spreadsheetUrl: options.url,
       inputTabs: options.inputTabs.split(",").map((tab: string) => tab.trim()),
@@ -287,6 +310,55 @@ function validateConfig(config: SheetConfig) {
       `Warning: Tabs specified as both input and output: ${overlap.join(", ")}`
     );
   }
+}
+
+async function watchAndConvert(options: ConvertOptions) {
+  const interval = Number.parseInt(options.watchInterval || "30", 10) * 1000;
+
+  console.log("👁️  Watch mode enabled");
+  console.log(`📊 Checking for changes every ${interval / 1000} seconds`);
+  console.log("Press Ctrl+C to stop watching\n");
+
+  // Initial conversion
+  await convertSheet(options);
+
+  let isConverting = false;
+
+  // Set up periodic check
+  const checkForChanges = async () => {
+    if (isConverting) {
+      console.log("⏳ Previous conversion still in progress, skipping...");
+      return;
+    }
+
+    try {
+      isConverting = true;
+
+      console.log(
+        `\n🔍 Checking for updates... (${new Date().toLocaleTimeString()})`
+      );
+
+      // Perform the conversion
+      await convertSheet(options);
+    } catch (error) {
+      console.error(`❌ Error during conversion: ${(error as Error).message}`);
+    } finally {
+      isConverting = false;
+    }
+  };
+
+  // Set up the interval
+  const intervalId = setInterval(checkForChanges, interval);
+
+  // Handle graceful shutdown
+  process.on("SIGINT", () => {
+    console.log("\n\n👋 Stopping watch mode...");
+    clearInterval(intervalId);
+    process.exit(0);
+  });
+
+  // Keep the process running
+  process.stdin.resume();
 }
 
 program.parse();

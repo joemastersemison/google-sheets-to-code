@@ -1,0 +1,75 @@
+{
+  "_NOTE": "Please create a Google Sheet using the template in data-analysis-template.md",
+  "_TEMPLATE": "See data-analysis-template.md for detailed instructions on creating the sheet; the URL below may be deleted/changed",
+  "_PUBLIC_SHEET_URL": "Replace with your sheet URL after creating and sharing it",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1UUX2vK_rn8xsZntQucn4wPg6FwBzKzoH2xsjqNbZxoM/edit",
+  "inputTabs": ["RawData", "Parameters"],
+  "outputTabs": ["Analysis", "Summary"],
+  "outputLanguage": "python",
+  "_description": "Statistical data analysis with aggregation, ranking, and outlier detection",
+  "_example_formulas": {
+    "average": "=AVERAGE(A2:A100)",
+    "median": "=MEDIAN(A2:A100)",
+    "standardDeviation": "=STDEV(A2:A100)",
+    "min": "=MIN(A2:A100)",
+    "max": "=MAX(A2:A100)",
+    "count": "=COUNT(A2:A100)",
+    "countIf": "=COUNTIF(A2:A100, \">100\")",
+    "percentile": "=PERCENTILE(A2:A100, 0.75)",
+    "rank": "=RANK(A2, A$2:A$100)",
+    "correlation": "=CORREL(A2:A100, B2:B100)",
+    "movingAverage": "=AVERAGE(A2:A7)",
+    "growthRate": "=(A100/A2)^(1/98)-1",
+    "zScore": "=(A2-AVERAGE(A$2:A$100))/STDEV(A$2:A$100)",
+    "outlierDetection": "=IF(ABS((A2-AVERAGE(A$2:A$100))/STDEV(A$2:A$100))>3, \"Outlier\", \"Normal\")",
+    "trendAnalysis": "=FORECAST(101, A2:A100, B2:B100)"
+  },
+  "_input_tabs_description": {
+    "RawData": {
+      "A2:A100": "Numeric data values for analysis",
+      "B2:B100": "Secondary data series for correlation",
+      "C2:C100": "Category labels",
+      "D2:D100": "Timestamps or dates"
+    },
+    "Parameters": {
+      "B2": "Confidence level (e.g., 0.95)",
+      "B3": "Significance threshold",
+      "B4": "Moving average window size",
+      "B5": "Outlier threshold (standard deviations)",
+      "B6": "Minimum sample size"
+    }
+  },
+  "_output_tabs_description": {
+    "Analysis": {
+      "A1": "Data mean",
+      "A2": "Data median",
+      "A3": "Standard deviation",
+      "A4": "Variance",
+      "A5": "Min value",
+      "A6": "Max value",
+      "A7": "Range",
+      "A8": "Count",
+      "A9": "25th percentile",
+      "A10": "75th percentile",
+      "A11": "Interquartile range",
+      "A12": "Coefficient of variation",
+      "A13": "Skewness indicator",
+      "A14": "Outlier count",
+      "A15": "Correlation coefficient"
+    },
+    "Summary": {
+      "A1": "Statistical summary table",
+      "A2": "Distribution analysis",
+      "A3": "Trend indicators",
+      "A4": "Data quality metrics",
+      "A5": "Recommendations"
+    }
+  },
+  "_common_patterns": {
+    "conditionalAggregation": "=SUMIF(C2:C100, \"Category1\", A2:A100)",
+    "lookupWithStats": "=VLOOKUP(MAX(A2:A100), A2:C100, 3, FALSE)",
+    "dynamicRange": "=AVERAGE(INDIRECT(\"A2:A\"&B6))",
+    "multiCondition": "=COUNTIFS(A2:A100, \">50\", B2:B100, \"<100\")",
+    "arrayFormula": "=ARRAYFORMULA(A2:A100 * B2:B100)"
+  }
+}
