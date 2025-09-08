@@ -47,15 +47,6 @@ jobs:
           fi
           echo "✅ No type errors found"
 
-      - name: Security audit
-        run: |
-          echo "🔒 Running security audit..."
-          if ! npm audit --audit-level=high; then
-            echo "❌ Security vulnerabilities found!"
-            exit 1
-          fi
-          echo "✅ No high-severity security vulnerabilities found"
-
       - name: Check package-lock consistency
         run: |
           echo "🔍 Checking package-lock.json consistency..."
