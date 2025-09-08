@@ -1179,67 +1179,30 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
 
 // Financial functions
 function pmt(rate: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
-  // PMT formula: PMT = (rate * PV) / (1 - (1 + rate)^(-nper))
-  // When rate is 0
   if (rate === 0) {
     return -(pv + fv) / nper;
   }
-  
   const pvif = Math.pow(1 + rate, nper);
-  const payment = rate * (pv * pvif + fv) / (pvif - 1);
-  
-  // Adjust for payment at beginning of period
-  if (type === 1) {
-    return payment / (1 + rate);
-  }
-  
-  return payment;
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -(pv * pvif + fv) / (pmtFactor * (pvif - 1) / rate);
 }
 
 function fv(rate: number, nper: number, pmt: number, pv: number = 0, type: number = 0): number {
-  // FV formula: FV = -PV * (1 + rate)^nper - PMT * (((1 + rate)^nper - 1) / rate)
-  // When rate is 0
   if (rate === 0) {
-    return -(pv + pmt * nper);
+    return -pv - pmt * nper;
   }
-  
   const pvif = Math.pow(1 + rate, nper);
-  let fvValue = -pv * pvif;
-  
-  // Calculate payment portion
-  const pmtMultiplier = (pvif - 1) / rate;
-  if (type === 1) {
-    // Payment at beginning of period
-    fvValue -= pmt * pmtMultiplier * (1 + rate);
-  } else {
-    // Payment at end of period
-    fvValue -= pmt * pmtMultiplier;
-  }
-  
-  return fvValue;
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -pv * pvif - pmt * pmtFactor * (pvif - 1) / rate;
 }
 
 function pv(rate: number, nper: number, pmt: number, fv: number = 0, type: number = 0): number {
-  // PV formula: PV = -PMT * ((1 - (1 + rate)^(-nper)) / rate) - FV / (1 + rate)^nper
-  // When rate is 0
   if (rate === 0) {
-    return -(fv + pmt * nper);
+    return -pmt * nper - fv;
   }
-  
   const pvif = Math.pow(1 + rate, nper);
-  let pvValue = -fv / pvif;
-  
-  // Calculate payment portion
-  const pmtMultiplier = (1 - 1 / pvif) / rate;
-  if (type === 1) {
-    // Payment at beginning of period
-    pvValue -= pmt * pmtMultiplier * (1 + rate);
-  } else {
-    // Payment at end of period
-    pvValue -= pmt * pmtMultiplier;
-  }
-  
-  return pvValue;
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -(pmt * pmtFactor * (pvif - 1) / rate + fv) / pvif;
 }
 
 function rate(nper: number, pmt: number, pv: number, fv: number = 0, type: number = 0, guess: number = 0.1): number {
@@ -1284,15 +1247,15 @@ function rate(nper: number, pmt: number, pv: number, fv: number = 0, type: numbe
 }
 
 function npv(rate: number, ...cashflows: any[]): number {
-  // NPV formula: NPV = Σ(cashflow / (1 + rate)^period)
-  // Handle arrays and flatten them
-  const flatCashflows = cashflows.flat(Infinity).filter(v => v !== null && v !== undefined).map(Number);
-  let npvValue = 0;
-  
-  for (let i = 0; i < flatCashflows.length; i++) {
-    npvValue += flatCashflows[i] / Math.pow(1 + rate, i + 1);
+  if (rate === 0) {
+    // When rate is 0, NPV is undefined (division by zero)
+    return NaN;
   }
-  
+  const flatCashflows = cashflows.flat(Infinity).filter(v => v !== null && v !== undefined);
+  let npvValue = 0;
+  for (let i = 0; i < flatCashflows.length; i++) {
+    npvValue += Number(flatCashflows[i]) / Math.pow(1 + rate, i + 1);
+  }
   return npvValue;
 }
 
@@ -1327,6 +1290,35 @@ function irr(...cashflows: any[]): number {
   
   // If no convergence, return error
   return NaN;
+}
+
+function nper(rate: number, pmt: number, pv: number, fv: number = 0, type: number = 0): number {
+  if (rate === 0) {
+    return -(pv + fv) / pmt;
+  }
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  const log1 = Math.log((pmt * pmtFactor / rate - fv) / (pv + pmt * pmtFactor / rate));
+  const log2 = Math.log(1 + rate);
+  return log1 / log2;
+}
+
+function ipmt(rate: number, per: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
+  const payment = pmt(rate, nper, pv, fv, type);
+  let balance = pv;
+  
+  for (let i = 1; i < per; i++) {
+    const interestPayment = balance * rate;
+    const principalPayment = payment - interestPayment;
+    balance += principalPayment;
+  }
+  
+  return balance * rate;
+}
+
+function ppmt(rate: number, per: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
+  const payment = pmt(rate, nper, pv, fv, type);
+  const ipmt_val = ipmt(rate, per, nper, pv, fv, type);
+  return payment - ipmt_val;
 }`;
   }
 

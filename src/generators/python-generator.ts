@@ -1169,63 +1169,29 @@ def get_range(range_ref: str, cells: dict) -> list:
 # Financial functions
 def pmt(rate, nper, pv, fv=0, type=0):
     """Calculate payment for a loan."""
-    # PMT formula: PMT = (rate * PV) / (1 - (1 + rate)^(-nper))
-    # When rate is 0
     if rate == 0:
         return -(pv + fv) / nper
-    
     pvif = (1 + rate) ** nper
-    payment = rate * (pv * pvif + fv) / (pvif - 1)
-    
-    # Adjust for payment at beginning of period
-    if type == 1:
-        return payment / (1 + rate)
-    
-    return payment
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -(pv * pvif + fv) / (pmt_factor * (pvif - 1) / rate)
 
 
 def fv(rate, nper, pmt, pv=0, type=0):
     """Calculate future value of an investment."""
-    # FV formula: FV = -PV * (1 + rate)^nper - PMT * (((1 + rate)^nper - 1) / rate)
-    # When rate is 0
     if rate == 0:
-        return -(pv + pmt * nper)
-    
+        return -pv - pmt * nper
     pvif = (1 + rate) ** nper
-    fv_value = -pv * pvif
-    
-    # Calculate payment portion
-    pmt_multiplier = (pvif - 1) / rate
-    if type == 1:
-        # Payment at beginning of period
-        fv_value -= pmt * pmt_multiplier * (1 + rate)
-    else:
-        # Payment at end of period
-        fv_value -= pmt * pmt_multiplier
-    
-    return fv_value
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -pv * pvif - pmt * pmt_factor * (pvif - 1) / rate
 
 
 def pv(rate, nper, pmt, fv=0, type=0):
     """Calculate present value of an investment."""
-    # PV formula: PV = -PMT * ((1 - (1 + rate)^(-nper)) / rate) - FV / (1 + rate)^nper
-    # When rate is 0
     if rate == 0:
-        return -(fv + pmt * nper)
-    
+        return -pmt * nper - fv
     pvif = (1 + rate) ** nper
-    pv_value = -fv / pvif
-    
-    # Calculate payment portion
-    pmt_multiplier = (1 - 1 / pvif) / rate
-    if type == 1:
-        # Payment at beginning of period
-        pv_value -= pmt * pmt_multiplier * (1 + rate)
-    else:
-        # Payment at end of period
-        pv_value -= pmt * pmt_multiplier
-    
-    return pv_value
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -(pmt * pmt_factor * (pvif - 1) / rate + fv) / pvif
 
 
 def rate(nper, pmt, pv, fv=0, type=0, guess=0.1):
@@ -1264,12 +1230,12 @@ def rate(nper, pmt, pv, fv=0, type=0, guess=0.1):
 
 def npv(rate, *cashflows):
     """Calculate net present value."""
-    # NPV formula: NPV = Σ(cashflow / (1 + rate)^period)
+    if rate == 0:
+        # When rate is 0, NPV is undefined (division by zero)
+        return float('nan')
     npv_value = 0
-    
     for i, cashflow in enumerate(cashflows):
         npv_value += cashflow / ((1 + rate) ** (i + 1))
-    
     return npv_value
 
 
@@ -1297,7 +1263,38 @@ def irr(cashflows, guess=0.1):
         rate = new_rate
     
     # If no convergence, return NaN
-    return float('nan')`;
+    return float('nan')
+
+
+def nper(rate, pmt, pv, fv=0, type=0):
+    """Calculate number of periods."""
+    if rate == 0:
+        return -(pv + fv) / pmt
+    pmt_factor = (1 + rate) if type == 1 else 1
+    import math
+    log1 = math.log((pmt * pmt_factor / rate - fv) / (pv + pmt * pmt_factor / rate))
+    log2 = math.log(1 + rate)
+    return log1 / log2
+
+
+def ipmt(rate, per, nper, pv, fv=0, type=0):
+    """Calculate interest payment for a specific period."""
+    payment = pmt(rate, nper, pv, fv, type)
+    balance = pv
+    
+    for i in range(1, int(per)):
+        interest_payment = balance * rate
+        principal_payment = payment - interest_payment
+        balance += principal_payment
+    
+    return balance * rate
+
+
+def ppmt(rate, per, nper, pv, fv=0, type=0):
+    """Calculate principal payment for a specific period."""
+    payment = pmt(rate, nper, pv, fv, type)
+    ipmt_val = ipmt(rate, per, nper, pv, fv, type)
+    return payment - ipmt_val`;
   }
 
   private sanitizePropertyName(name: string): string {
