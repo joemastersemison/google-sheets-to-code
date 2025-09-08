@@ -1,0 +1,57 @@
+{
+  "_NOTE": "Please create a Google Sheet using the template in financial-model-template.md",
+  "_TEMPLATE": "See financial-model-template.md for detailed instructions on creating the sheet; the URL below may be deleted/changed",
+  "_PUBLIC_SHEET_URL": "Replace with your sheet URL after creating and sharing it",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1OT4hHtaEbqSIwkDgIMjNsc8sBkaVzUBci5HDujQEmrI/edit",
+  "inputTabs": ["LoanParameters", "CashFlows"],
+  "outputTabs": ["LoanCalculations", "InvestmentAnalysis"],
+  "outputLanguage": "typescript",
+  "_description": "Financial model demonstrating PMT, FV, PV, RATE, NPV, and IRR calculations",
+  "_example_formulas": {
+    "monthlyPayment": "=PMT(B2/12, B3*12, -B4)",
+    "futureValue": "=FV(B5/12, B6*12, -B7, -B8)",
+    "presentValue": "=PV(B9/12, B10*12, -B11, -B12)",
+    "netPresentValue": "=NPV(B13, C2:C10)",
+    "internalRateOfReturn": "=IRR(D2:D10)",
+    "effectiveRate": "=RATE(B14, -B15, B16, -B17)"
+  },
+  "_input_tabs_description": {
+    "LoanParameters": {
+      "B2": "Annual interest rate (e.g., 0.05 for 5%)",
+      "B3": "Loan term in years",
+      "B4": "Loan principal amount",
+      "B5": "Investment annual rate",
+      "B6": "Investment period in years",
+      "B7": "Monthly contribution",
+      "B8": "Initial investment",
+      "B9": "Discount rate",
+      "B10": "Number of periods",
+      "B11": "Payment per period",
+      "B12": "Future value target",
+      "B13": "Required rate of return",
+      "B14": "Number of payments",
+      "B15": "Payment amount",
+      "B16": "Present value",
+      "B17": "Future value"
+    },
+    "CashFlows": {
+      "C2:C10": "Cash flows for NPV calculation",
+      "D2:D10": "Cash flows for IRR calculation (including initial investment)"
+    }
+  },
+  "_output_tabs_description": {
+    "LoanCalculations": {
+      "A1": "Monthly payment amount",
+      "A2": "Total interest paid",
+      "A3": "Total amount paid",
+      "A4": "Effective annual rate"
+    },
+    "InvestmentAnalysis": {
+      "A1": "Future value of investment",
+      "A2": "Present value needed",
+      "A3": "Net present value",
+      "A4": "Internal rate of return",
+      "A5": "Break-even period"
+    }
+  }
+}

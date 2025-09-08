@@ -40,7 +40,7 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Implement logical functions (IF, IFS, AND, OR, NOT)
 - [x] Implement text functions (CONCATENATE, LEFT, RIGHT, MID, LEN)
 - [x] Implement date functions (TODAY, NOW, DATE, DATEVALUE)
-- [ ] Implement financial functions (PMT, FV, PV, RATE)
+- [x] Implement financial functions (PMT, FV, PV, RATE, NPV, IRR)
 
 ## Phase 4: Dependency Analysis ✅
 - [x] Build cell dependency graph
@@ -70,7 +70,7 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Generate helper functions
 - [x] Add docstrings
 - [x] Add CLI execution support
-- [ ] Create pip-installable package
+- [x] Create pip-installable package (setup.py and pyproject.toml)
 
 ### Common Features
 - [x] Preserve calculation precision
@@ -86,7 +86,7 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Add progress indicators
 - [x] Implement verbose/debug modes
 - [x] Add CLI execution to generated files
-- [ ] Add --watch mode for development
+- [x] Add --watch mode for development
 
 ## Phase 7: Testing & Quality ✅
 ### Unit Tests
@@ -111,9 +111,9 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Create basic calculation example
 - [x] Test with conditional logic (IF statements)
 - [x] Test with named ranges
-- [ ] Create financial model example
-- [ ] Create data analysis example
-- [ ] Create inventory tracking example
+- [x] Create financial model example (examples/financial-model.json)
+- [x] Create data analysis example (examples/data-analysis.json)
+- [x] Create inventory tracking example (examples/inventory-tracking.json)
 - [x] Document limitations
 
 ## Phase 8: Documentation ✅
@@ -168,3 +168,11 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - ✅ Progress indicators and verbose logging
 - ✅ JSON input/output support in generated files
 - ✅ Automatic TypeScript to JavaScript compilation
+- ✅ Financial functions (PMT, FV, PV, RATE, NPV, IRR)
+- ✅ Statistical functions (COUNTIF, COUNTA, SUMIF, SUMIFS, INDEX)
+- ✅ Python pip-installable package (setup.py and pyproject.toml)
+- ✅ Watch mode for automatic regeneration (--watch flag)
+- ✅ Complete example configurations with working XLSX files
+- ✅ Support for hybrid sheets with both static data and formulas
+- ✅ Column-only range references (e.g., A:A, D:D)
+- ✅ Advanced inventory tracking with EOQ and ABC classification

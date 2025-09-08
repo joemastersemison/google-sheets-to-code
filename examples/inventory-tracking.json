@@ -1,0 +1,104 @@
+{
+  "_NOTE": "Please create a Google Sheet using the template in inventory-tracking-template.md",
+  "_TEMPLATE": "See inventory-tracking-template.md for detailed instructions on creating the sheet; the URL below may be deleted/changed",
+  "_PUBLIC_SHEET_URL": "Replace with your sheet URL after creating and sharing it",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1PbM0Lvktu6z5q2hVgTOVXsMNmUmc6fzUhGbTjbs4wGs/edit",
+  "inputTabs": ["Products", "Transactions", "Settings"],
+  "outputTabs": ["CurrentInventory", "Alerts", "Reports"],
+  "outputLanguage": "typescript",
+  "_description": "Inventory management with reorder points, ABC classification, and automated alerts",
+  "_example_formulas": {
+    "currentStock": "=SUMIF(Transactions!B:B, A2, Transactions!D:D)",
+    "reorderPoint": "=Products!D2 * Settings!$B$2 + Products!E2",
+    "needsReorder": "=IF(B2 <= C2, \"REORDER\", \"OK\")",
+    "stockValue": "=B2 * Products!C2",
+    "turnoverRate": "=SUMIF(Transactions!B:B, A2, Transactions!D:D) / AVERAGE(B2:B13)",
+    "daysOfSupply": "=B2 / (SUMIF(Transactions!B:B, A2, Transactions!D:D) / 30)",
+    "abc_classification": "=IF(E2/SUM(E:E) > 0.7, \"A\", IF(E2/SUM(E:E) > 0.2, \"B\", \"C\"))",
+    "stockoutRisk": "=IF(B2 < D2*0.5, \"HIGH\", IF(B2 < D2, \"MEDIUM\", \"LOW\"))",
+    "economicOrderQty": "=SQRT(2 * F2 * Settings!$B$3 / (Products!C2 * Settings!$B$4))",
+    "lastRestockDate": "=MAXIFS(Transactions!A:A, Transactions!B:B, A2, Transactions!C:C, \"IN\")",
+    "averageDailyUsage": "=AVERAGEIFS(Transactions!D:D, Transactions!B:B, A2, Transactions!C:C, \"OUT\") / 30",
+    "stockCoverage": "=B2 / K2"
+  },
+  "_input_tabs_description": {
+    "Products": {
+      "A": "Product SKU",
+      "B": "Product Name",
+      "C": "Unit Cost",
+      "D": "Lead Time (days)",
+      "E": "Safety Stock",
+      "F": "Annual Demand",
+      "G": "Supplier",
+      "H": "Category"
+    },
+    "Transactions": {
+      "A": "Date",
+      "B": "Product SKU",
+      "C": "Transaction Type (IN/OUT)",
+      "D": "Quantity",
+      "E": "Unit Price",
+      "F": "Reference Number",
+      "G": "Notes"
+    },
+    "Settings": {
+      "B2": "Lead Time Multiplier",
+      "B3": "Ordering Cost per Order",
+      "B4": "Holding Cost Rate (annual %)",
+      "B5": "Service Level Target",
+      "B6": "Review Period (days)",
+      "B7": "Min Order Quantity",
+      "B8": "Max Order Quantity"
+    }
+  },
+  "_output_tabs_description": {
+    "CurrentInventory": {
+      "A": "Product SKU",
+      "B": "Current Stock Level",
+      "C": "Reorder Point",
+      "D": "Reorder Status",
+      "E": "Stock Value",
+      "F": "Days of Supply",
+      "G": "Turnover Rate",
+      "H": "ABC Classification",
+      "I": "Stockout Risk",
+      "J": "Economic Order Quantity",
+      "K": "Average Daily Usage",
+      "L": "Stock Coverage (days)"
+    },
+    "Alerts": {
+      "A": "Alert Type",
+      "B": "Product SKU",
+      "C": "Message",
+      "D": "Priority",
+      "E": "Action Required",
+      "F": "Date Generated"
+    },
+    "Reports": {
+      "A": "Total Inventory Value",
+      "B": "Number of SKUs",
+      "C": "Items Below Reorder Point",
+      "D": "Items Out of Stock",
+      "E": "Slow Moving Items",
+      "F": "Fast Moving Items",
+      "G": "Average Turnover",
+      "H": "Total Orders This Month",
+      "I": "Inventory Accuracy %",
+      "J": "Fill Rate %"
+    }
+  },
+  "_business_rules": {
+    "reorderTrigger": "=IF(AND(B2 <= C2, NOT(ISBLANK(J2))), CONCATENATE(\"Generate PO for \", J2, \" units\"), \"\")",
+    "excessInventory": "=IF(L2 > 90, \"Review for reduction\", \"\")",
+    "expiredStock": "=IF(Products!I2 < TODAY(), \"EXPIRED\", \"OK\")",
+    "priceVariance": "=IF(ABS(E2 - Products!C2) / Products!C2 > 0.1, \"Price variance detected\", \"\")",
+    "supplierPerformance": "=COUNTIFS(Transactions!G:G, Products!G2, Transactions!C:C, \"IN\", Transactions!A:A, \">\" & TODAY()-30)"
+  },
+  "_kpi_calculations": {
+    "inventoryTurnover": "=SUM(Transactions!D:D WHERE C:C=\"OUT\") / AVERAGE(CurrentInventory!B:B)",
+    "carryingCost": "=SUM(CurrentInventory!E:E) * Settings!B4",
+    "stockoutRate": "=COUNTIF(CurrentInventory!B:B, 0) / COUNTA(CurrentInventory!B:B)",
+    "orderFillRate": "=1 - stockoutRate",
+    "inventoryAccuracy": "=1 - ABS(SUM(physicalCount) - SUM(systemCount)) / SUM(systemCount)"
+  }
+}

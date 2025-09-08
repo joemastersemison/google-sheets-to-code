@@ -507,6 +507,10 @@ npm run cli -- convert \
   --language typescript \
   --output-file generated-code.ts
 
+# Watch mode - automatically regenerate on changes
+npm run cli -- convert --config config.json --watch
+npm run cli -- convert --config config.json --watch --watch-interval 60
+
 # Run the generated code
 node generated-code.js --json</code></pre>
             </div>
@@ -516,6 +520,25 @@ node generated-code.js --json</code></pre>
                 <pre><code># 1. Go to Google Sheets
 # 2. File -> Import -> Upload your .xlsx file
 # 3. Use the Google Sheets URL with the tool</code></pre>
+            </div>
+            
+            <h3>Example Configurations:</h3>
+            <p>The project includes ready-to-use XLSX files and configurations for common use cases:</p>
+            <div class="code-block">
+                <pre><code># Financial modeling with loan calculations (PMT, NPV, IRR)
+# Includes financial-model.xlsx ready for Google Sheets import
+npm run cli -- convert --config examples/financial-model.json
+
+# Statistical data analysis with 100 rows of sample data
+# Includes data-analysis.xlsx with MEDIAN, PERCENTILE, SUMIFS
+npm run cli -- convert --config examples/data-analysis.json
+
+# Complete inventory management system
+# Includes inventory-tracking.xlsx with EOQ and ABC classification
+npm run cli -- convert --config examples/inventory-tracking.json
+
+# Watch mode for automatic regeneration
+npm run cli -- convert --config examples/financial-model.json --watch</code></pre>
             </div>
         </section>
 
@@ -537,18 +560,43 @@ node generated-code.js --json</code></pre>
                 Sheet2Code handles a comprehensive range of Excel and Google Sheets formulas and functions that work identically in both platforms:
             </p>
             <ul>
-                <li><span class="highlight">Math & Statistics:</span> SUM, AVERAGE, MIN, MAX, COUNT, ROUND, ABS, SQRT, STDEV, MEDIAN</li>
+                <li><span class="highlight">Math & Statistics:</span> SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, ROUND, ABS, SQRT, STDEV, VAR, MEDIAN, PERCENTILE</li>
+                <li><span class="highlight">Conditional:</span> COUNTIF, SUMIF, SUMIFS, AVERAGEIF, COUNTIFS</li>
                 <li><span class="highlight">Logical:</span> IF, IFS, AND, OR, NOT, IFERROR, IFNA, SWITCH</li>
                 <li><span class="highlight">Lookup & Reference:</span> VLOOKUP, HLOOKUP, INDEX, MATCH, OFFSET, INDIRECT</li>
                 <li><span class="highlight">Text:</span> CONCATENATE, LEFT, RIGHT, MID, LEN, TRIM, UPPER, LOWER, SUBSTITUTE</li>
                 <li><span class="highlight">Date & Time:</span> TODAY, NOW, DATE, DATEVALUE, YEAR, MONTH, DAY</li>
-                <li><span class="highlight">Array Formulas:</span> Array literals, ARRAYFORMULA, FILTER, SORT, UNIQUE</li>
-                <li><span class="highlight">Financial:</span> PMT, PV, FV, RATE, NPV, IRR (coming soon)</li>
+                <li><span class="highlight">Array Formulas:</span> Array literals, ARRAYFORMULA, FILTER, SORT, UNIQUE, RANK, LARGE, SMALL</li>
+                <li><span class="highlight">Financial:</span> PMT, PV, FV, RATE, NPV, IRR (with Newton-Raphson solver)</li>
             </ul>
         </section>
 
         <section class="section">
             <h2>Advanced Features</h2>
+            
+            <h3>Watch Mode for Development</h3>
+            <p>
+                Automatically regenerate code when your Google Sheet changes. Perfect for iterative development 
+                with configurable refresh intervals (--watch flag with --watch-interval option).
+            </p>
+            
+            <h3>Hybrid Sheet Support</h3>
+            <p>
+                Intelligently handles sheets that contain both static data and formulas. Automatically detects and 
+                loads non-formula cells from output sheets when needed.
+            </p>
+            
+            <h3>Column-Only Range References</h3>
+            <p>
+                Full support for column-only ranges like A:A or D:D, commonly used in functions like SUMIF 
+                and COUNTIF for dynamic data ranges.
+            </p>
+            
+            <h3>Named Range Resolution</h3>
+            <p>
+                Automatically fetches and resolves named ranges from your Google Sheets, converting them to their 
+                actual cell references in the generated code.
+            </p>
             
             <h3>Circular Dependency Handling</h3>
             <p>

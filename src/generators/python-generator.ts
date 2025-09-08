@@ -19,6 +19,10 @@ export class PythonGenerator {
     code.push("from datetime import datetime");
     code.push("");
 
+    // Add helper functions FIRST (before the main function that uses them)
+    code.push(this.generateHelperFunctions());
+    code.push("");
+
     // Generate the main calculation function
     code.push(
       this.generateCalculationFunction(
@@ -28,10 +32,6 @@ export class PythonGenerator {
         outputTabs
       )
     );
-    code.push("");
-
-    // Add helper functions
-    code.push(this.generateHelperFunctions());
 
     return code.join("\n");
   }
@@ -410,10 +410,29 @@ export class PythonGenerator {
         return `max_values(${args.join(", ")})`;
       case "COUNT":
         return `count_values(${args.join(", ")})`;
+      case "COUNTA":
+        return `counta(${args.join(", ")})`;
       case "COUNTIF":
         return `countif(${args.join(", ")})`;
+      case "SUMIF":
+        return `sumif(${args.join(", ")})`;
+      case "SUMIFS":
+        return `sumifs(${args.join(", ")})`;
+      case "AVERAGEIF":
+        return `averageif(${args.join(", ")})`;
       case "STDEV":
         return `stdev(${args.join(", ")})`;
+      case "VAR":
+      case "VARIANCE":
+        return `var(${args.join(", ")})`;
+      case "MEDIAN":
+        return `median(${args.join(", ")})`;
+      case "PERCENTILE":
+        return `percentile(${args.join(", ")})`;
+      case "LARGE":
+        return `large(${args.join(", ")})`;
+      case "SUMPRODUCT":
+        return `sumproduct(${args.join(", ")})`;
       case "CHIINV":
         return `chiinv(${args.join(", ")})`;
       case "FINV":
@@ -451,6 +470,8 @@ export class PythonGenerator {
         return `vlookup(${args.join(", ")})`;
       case "MATCH":
         return `match(${args.join(", ")})`;
+      case "INDEX":
+        return `index(${args.join(", ")})`;
       case "INDIRECT":
         return `indirect(${args.join(", ")})`;
       case "ROW":
@@ -486,6 +507,20 @@ export class PythonGenerator {
         return `datetime.now().strftime('%Y-%m-%d')`;
       case "NOW":
         return `datetime.now().isoformat()`;
+
+      // Financial functions
+      case "PMT":
+        return `pmt(${args.join(", ")})`;
+      case "FV":
+        return `fv(${args.join(", ")})`;
+      case "PV":
+        return `pv(${args.join(", ")})`;
+      case "RATE":
+        return `rate(${args.join(", ")})`;
+      case "NPV":
+        return `npv(${args.join(", ")})`;
+      case "IRR":
+        return `irr(${args.join(", ")})`;
 
       default:
         // For unknown functions, generate a generic call
@@ -566,6 +601,16 @@ def vlookup(lookup_value, table_array, col_index, exact_match=True):
 
 
 # Statistical functions
+def counta(range_values):
+    """Count non-empty cells."""
+    count = 0
+    values = flatten_values(range_values)
+    for value in values:
+        if value is not None and str(value).strip() != '':
+            count += 1
+    return count
+
+
 def countif(range_values, criterion):
     """Count cells that meet a criterion."""
     count = 0
@@ -621,17 +666,325 @@ def countif(range_values, criterion):
     return count
 
 
-def stdev(*args):
-    """Calculate sample standard deviation."""
-    import math
+def median(values):
+    """Calculate median of numeric values."""
+    numeric_values = [float(v) for v in flatten_values(values) if v is not None and str(v).strip() != '']
+    if not numeric_values:
+        return 0
+    sorted_values = sorted(numeric_values)
+    n = len(sorted_values)
+    if n % 2 == 0:
+        return (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
+    else:
+        return sorted_values[n//2]
+
+
+def var(*args):
+    """Calculate sample variance."""
     values = flatten_values(*args)
     numeric_values = [float(v) for v in values if v is not None and str(v).strip() != '']
     n = len(numeric_values)
     if n < 2:
         return 0
     mean = sum(numeric_values) / n
-    variance = sum((x - mean) ** 2 for x in numeric_values) / (n - 1)
-    return math.sqrt(variance)
+    return sum((x - mean) ** 2 for x in numeric_values) / (n - 1)
+
+
+def stdev(*args):
+    """Calculate sample standard deviation."""
+    import math
+    variance = var(*args)
+    return math.sqrt(variance) if variance > 0 else 0
+
+
+def percentile(values, k):
+    """Calculate k-th percentile (0-1 scale)."""
+    numeric_values = [float(v) for v in flatten_values(values) if v is not None and str(v).strip() != '']
+    if not numeric_values:
+        return 0
+    sorted_values = sorted(numeric_values)
+    n = len(sorted_values)
+    rank = k * (n - 1)
+    lower = int(rank)
+    upper = lower + 1
+    if upper >= n:
+        return sorted_values[-1]
+    weight = rank - lower
+    return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
+
+
+def sumif(range_values, criterion, sum_range=None):
+    """Sum cells that meet a criterion."""
+    range_list = flatten_values(range_values)
+    sum_list = flatten_values(sum_range) if sum_range is not None else range_list
+    
+    # Ensure both lists are the same length
+    if len(range_list) != len(sum_list):
+        return 0
+    
+    total = 0
+    criterion_str = str(criterion)
+    
+    for i, value in enumerate(range_list):
+        match = False
+        
+        if criterion_str.startswith('>='):
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and value >= compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<='):
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and value <= compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
+            compare_value = criterion_str[2:]
+            if str(value) != compare_value:
+                match = True
+        elif criterion_str.startswith('>'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and value > compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and value < compare_value:
+                    match = True
+            except:
+                pass
+        else:
+            # Direct equality comparison
+            if str(value) == str(criterion):
+                match = True
+        
+        if match:
+            try:
+                total += float(sum_list[i])
+            except:
+                pass
+    
+    return total
+
+
+def sumifs(sum_range, *criteria):
+    """Sum cells that meet multiple criteria."""
+    sum_values = flatten_values(sum_range)
+    
+    # Criteria comes in pairs: range1, criterion1, range2, criterion2, etc.
+    criteria_ranges = []
+    criteria_values = []
+    
+    for i in range(0, len(criteria), 2):
+        if i + 1 < len(criteria):
+            criteria_ranges.append(flatten_values(criteria[i]))
+            criteria_values.append(criteria[i + 1])
+    
+    total = 0
+    
+    for i in range(len(sum_values)):
+        all_match = True
+        
+        for j in range(len(criteria_ranges)):
+            range_list = criteria_ranges[j]
+            criterion = criteria_values[j]
+            criterion_str = str(criterion)
+            
+            if i >= len(range_list):
+                all_match = False
+                break
+            
+            value = range_list[i]
+            match = False
+            
+            if criterion_str.startswith('>='):
+                try:
+                    compare_value = float(criterion_str[2:])
+                    if isinstance(value, (int, float)) and value >= compare_value:
+                        match = True
+                except:
+                    pass
+            elif criterion_str.startswith('<='):
+                try:
+                    compare_value = float(criterion_str[2:])
+                    if isinstance(value, (int, float)) and value <= compare_value:
+                        match = True
+                except:
+                    pass
+            elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
+                compare_value = criterion_str[2:]
+                if value != compare_value:
+                    match = True
+            elif criterion_str.startswith('>'):
+                try:
+                    compare_value = float(criterion_str[1:])
+                    if isinstance(value, (int, float)) and value > compare_value:
+                        match = True
+                except:
+                    pass
+            elif criterion_str.startswith('<'):
+                try:
+                    compare_value = float(criterion_str[1:])
+                    if isinstance(value, (int, float)) and value < compare_value:
+                        match = True
+                except:
+                    pass
+            else:
+                if value == criterion:
+                    match = True
+            
+            if not match:
+                all_match = False
+                break
+        
+        if all_match:
+            try:
+                total += float(sum_values[i])
+            except:
+                pass
+    
+    return total
+
+
+def averageif(range_values, criterion, average_range=None):
+    """Average cells that meet a criterion."""
+    range_list = flatten_values(range_values)
+    avg_list = flatten_values(average_range) if average_range is not None else range_list
+    
+    # Ensure both lists are the same length
+    if len(range_list) != len(avg_list):
+        return 0
+    
+    total = 0
+    count = 0
+    criterion_str = str(criterion)
+    
+    for i, value in enumerate(range_list):
+        match = False
+        
+        if criterion_str.startswith('>='):
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and value >= compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<='):
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and value <= compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
+            compare_value = criterion_str[2:]
+            if str(value) != compare_value:
+                match = True
+        elif criterion_str.startswith('>'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and value > compare_value:
+                    match = True
+            except:
+                pass
+        elif criterion_str.startswith('<'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and value < compare_value:
+                    match = True
+            except:
+                pass
+        else:
+            # Direct equality comparison
+            if str(value) == str(criterion):
+                match = True
+        
+        if match:
+            try:
+                total += float(avg_list[i])
+                count += 1
+            except:
+                pass
+    
+    return total / count if count > 0 else 0
+
+
+def large(array, k):
+    """Get k-th largest value from array."""
+    numeric_values = [float(v) for v in flatten_values(array) if v is not None and str(v).strip() != '']
+    if not numeric_values or k > len(numeric_values):
+        return 0
+    sorted_values = sorted(numeric_values, reverse=True)
+    return sorted_values[k - 1] if k > 0 else 0
+
+
+def index(array, row_num, col_num=1):
+    """Return value at specified position in array."""
+    if isinstance(array, list):
+        if row_num > 0 and row_num <= len(array):
+            row = array[row_num - 1]
+            if isinstance(row, list):
+                if col_num > 0 and col_num <= len(row):
+                    return row[col_num - 1]
+            else:
+                return row
+    return '#REF!'
+
+
+def match(lookup_value, lookup_array, match_type=1):
+    """Find position of value in array."""
+    lookup_list = flatten_values(lookup_array)
+    
+    if match_type == 0:
+        # Exact match
+        try:
+            return lookup_list.index(lookup_value) + 1
+        except ValueError:
+            return '#N/A'
+    elif match_type == 1:
+        # Largest value less than or equal to lookup_value
+        for i, value in enumerate(lookup_list):
+            if value > lookup_value:
+                return i if i > 0 else '#N/A'
+        return len(lookup_list)
+    else:
+        # Smallest value greater than or equal to lookup_value
+        for i, value in enumerate(lookup_list):
+            if value >= lookup_value:
+                return i + 1
+        return '#N/A'
+
+
+def sumproduct(*arrays):
+    """Calculate sum of products of corresponding array elements."""
+    if not arrays:
+        return 0
+    
+    # Flatten all arrays
+    flattened = [flatten_values(arr) for arr in arrays]
+    
+    # Find minimum length
+    min_length = min(len(arr) for arr in flattened)
+    
+    total = 0
+    for i in range(min_length):
+        product = 1
+        for arr in flattened:
+            try:
+                product *= float(arr[i])
+            except:
+                product = 0
+                break
+        total += product
+    
+    return total
 
 
 # Statistical distribution functions
@@ -698,26 +1051,6 @@ def tinv(p, df):
 
 
 # Lookup and reference functions
-def match(lookup_value, lookup_array, match_type=1):
-    """Find position of value in array."""
-    for i, value in enumerate(lookup_array):
-        if match_type == 0:
-            # Exact match
-            if value == lookup_value:
-                return i + 1
-        elif match_type == 1:
-            # Largest value less than or equal to lookup_value
-            if value > lookup_value:
-                return i
-            if i == len(lookup_array) - 1:
-                return i + 1
-        elif match_type == -1:
-            # Smallest value greater than or equal to lookup_value
-            if value <= lookup_value:
-                return i + 1
-    return -1
-
-
 def indirect(ref):
     """Get value from indirect reference."""
     # This would need access to the cells dictionary
@@ -830,7 +1163,138 @@ def get_range(range_ref: str, cells: dict) -> list:
         else:
             result.append(row_values)
     
-    return result`;
+    return result
+
+
+# Financial functions
+def pmt(rate, nper, pv, fv=0, type=0):
+    """Calculate payment for a loan."""
+    if rate == 0:
+        return -(pv + fv) / nper
+    pvif = (1 + rate) ** nper
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -(pv * pvif + fv) / (pmt_factor * (pvif - 1) / rate)
+
+
+def fv(rate, nper, pmt, pv=0, type=0):
+    """Calculate future value of an investment."""
+    if rate == 0:
+        return -pv - pmt * nper
+    pvif = (1 + rate) ** nper
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -pv * pvif - pmt * pmt_factor * (pvif - 1) / rate
+
+
+def pv(rate, nper, pmt, fv=0, type=0):
+    """Calculate present value of an investment."""
+    if rate == 0:
+        return -pmt * nper - fv
+    pvif = (1 + rate) ** nper
+    pmt_factor = (1 + rate) if type == 1 else 1
+    return -(pmt * pmt_factor * (pvif - 1) / rate + fv) / pvif
+
+
+def rate(nper, pmt, pv, fv=0, type=0, guess=0.1):
+    """Calculate interest rate using Newton-Raphson method."""
+    max_iterations = 100
+    tolerance = 1e-6
+    
+    rate = guess
+    
+    for i in range(max_iterations):
+        if rate == 0:
+            f = pv + pmt * nper + fv
+            df = nper * (nper - 1) * pmt / 2
+        else:
+            pvif = (1 + rate) ** nper
+            pmt_factor = (1 + rate) if type == 1 else 1
+            
+            f = pv * pvif + pmt * pmt_factor * (pvif - 1) / rate + fv
+            
+            dpvif = nper * (1 + rate) ** (nper - 1)
+            df = pv * dpvif + pmt * pmt_factor * (dpvif * rate - (pvif - 1)) / (rate * rate)
+            
+            if type == 1:
+                df += pmt * (pvif - 1) / rate
+        
+        new_rate = rate - f / df
+        
+        if abs(new_rate - rate) < tolerance:
+            return new_rate
+        
+        rate = new_rate
+    
+    # If no convergence, return NaN
+    return float('nan')
+
+
+def npv(rate, *cashflows):
+    """Calculate net present value."""
+    if rate == 0:
+        # When rate is 0, NPV is undefined (division by zero)
+        return float('nan')
+    npv_value = 0
+    for i, cashflow in enumerate(cashflows):
+        npv_value += cashflow / ((1 + rate) ** (i + 1))
+    return npv_value
+
+
+def irr(cashflows, guess=0.1):
+    """Calculate internal rate of return using Newton-Raphson method."""
+    max_iterations = 100
+    tolerance = 1e-6
+    
+    rate = guess
+    
+    for i in range(max_iterations):
+        npv_value = 0
+        dnpv = 0
+        
+        for j, cashflow in enumerate(cashflows):
+            divisor = (1 + rate) ** j
+            npv_value += cashflow / divisor
+            dnpv -= j * cashflow / ((1 + rate) ** (j + 1))
+        
+        new_rate = rate - npv_value / dnpv
+        
+        if abs(new_rate - rate) < tolerance:
+            return new_rate
+        
+        rate = new_rate
+    
+    # If no convergence, return NaN
+    return float('nan')
+
+
+def nper(rate, pmt, pv, fv=0, type=0):
+    """Calculate number of periods."""
+    if rate == 0:
+        return -(pv + fv) / pmt
+    pmt_factor = (1 + rate) if type == 1 else 1
+    import math
+    log1 = math.log((pmt * pmt_factor / rate - fv) / (pv + pmt * pmt_factor / rate))
+    log2 = math.log(1 + rate)
+    return log1 / log2
+
+
+def ipmt(rate, per, nper, pv, fv=0, type=0):
+    """Calculate interest payment for a specific period."""
+    payment = pmt(rate, nper, pv, fv, type)
+    balance = pv
+    
+    for i in range(1, int(per)):
+        interest_payment = balance * rate
+        principal_payment = payment - interest_payment
+        balance += principal_payment
+    
+    return balance * rate
+
+
+def ppmt(rate, per, nper, pv, fv=0, type=0):
+    """Calculate principal payment for a specific period."""
+    payment = pmt(rate, nper, pv, fv, type)
+    ipmt_val = ipmt(rate, per, nper, pv, fv, type)
+    return payment - ipmt_val`;
   }
 
   private sanitizePropertyName(name: string): string {

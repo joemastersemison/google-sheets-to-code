@@ -197,9 +197,10 @@ describe("Integration Tests", () => {
       );
 
       // The generated code should be syntactically valid TypeScript
-      // Check that we're not generating literal undefined values (but typeof checks are OK)
-      expect(code).not.toMatch(/=\s*undefined[^'"]/);
-      expect(code).not.toMatch(/:\s*undefined[^'"]/);
+      // Check that we're not generating literal undefined values as assignments
+      // (but comparisons like !== undefined and typeof checks are OK)
+      expect(code).not.toMatch(/=\s*undefined\s*;/);
+      expect(code).not.toMatch(/:\s*undefined\s*[,}]/);
       // Note: null can be a valid value in TypeScript code
 
       // Should have proper structure

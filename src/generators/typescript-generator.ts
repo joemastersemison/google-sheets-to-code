@@ -128,6 +128,35 @@ export class TypeScriptGenerator {
     }
     lines.push("");
 
+    // Also initialize static values from output tabs (non-formula cells)
+    lines.push(this.indent("// Initialize static values from output sheets"));
+    for (const tabName of outputTabs) {
+      const sheet = sheets.get(tabName);
+      if (sheet) {
+        let hasStaticValues = false;
+        for (const [cellRef, cell] of sheet.cells) {
+          if (
+            !cell.formula &&
+            cell.value !== null &&
+            cell.value !== undefined &&
+            cell.value !== ""
+          ) {
+            const cellKey = `${tabName}!${cellRef}`;
+            hasStaticValues = true;
+            lines.push(
+              this.indent(
+                `cells['${cellKey}'] = ${this.formatValue(cell.value)};`
+              )
+            );
+          }
+        }
+        if (hasStaticValues) {
+          lines.push("");
+        }
+      }
+    }
+    lines.push("");
+
     // Calculate formulas in dependency order
     lines.push(this.indent("// Calculate formulas"));
     const analyzer = new DependencyAnalyzer();
@@ -458,8 +487,27 @@ export class TypeScriptGenerator {
         return `count(${args.join(", ")})`;
       case "COUNTIF":
         return `countif(${args.join(", ")})`;
+      case "COUNTA":
+        return `counta(${args.join(", ")})`;
+      case "SUMIF":
+        return `sumif(${args.join(", ")})`;
+      case "SUMIFS":
+        return `sumifs(${args.join(", ")})`;
       case "STDEV":
         return `stdev(${args.join(", ")})`;
+      case "VAR":
+      case "VARIANCE":
+        return `variance(${args.join(", ")})`;
+      case "MEDIAN":
+        return `median(${args.join(", ")})`;
+      case "PERCENTILE":
+        return `percentile(${args.join(", ")})`;
+      case "LARGE":
+        return `large(${args.join(", ")})`;
+      case "AVERAGEIF":
+        return `averageif(${args.join(", ")})`;
+      case "SUMPRODUCT":
+        return `sumproduct(${args.join(", ")})`;
       case "CHIINV":
         return `chiinv(${args.join(", ")})`;
       case "FINV":
@@ -497,8 +545,10 @@ export class TypeScriptGenerator {
         return `vlookup(${args.join(", ")})`;
       case "MATCH":
         return `match(${args.join(", ")})`;
+      case "INDEX":
+        return `index(${args.join(", ")})`;
       case "INDIRECT":
-        return `indirect(${args.join(", ")})`;
+        return `indirect(${args.join(", ")}, cells)`;
       case "ROW":
         if (args.length > 0) {
           return `getRow(${args[0]})`;
@@ -533,6 +583,20 @@ export class TypeScriptGenerator {
       case "NOW":
         return `new Date().toISOString()`;
 
+      // Financial functions
+      case "PMT":
+        return `pmt(${args.join(", ")})`;
+      case "FV":
+        return `fv(${args.join(", ")})`;
+      case "PV":
+        return `pv(${args.join(", ")})`;
+      case "RATE":
+        return `rate(${args.join(", ")})`;
+      case "NPV":
+        return `npv(${args.join(", ")})`;
+      case "IRR":
+        return `irr(${args.join(", ")})`;
+
       default:
         // For unknown functions, generate a generic call
         return `${functionName.toLowerCase()}(${args.join(", ")})`;
@@ -548,7 +612,11 @@ function sum(...args: any[]): number {
   }, 0);
 }
 
-function safeDivide(numerator: number, denominator: number): number | string {
+function safeDivide(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : numerator / denominator;
+}
+
+function safeDivideWithError(numerator: number, denominator: number): number | string {
   return denominator === 0 ? '#DIV/0!' : numerator / denominator;
 }
 
@@ -603,7 +671,7 @@ function countif(range: any[], criterion: any): number {
         if (value <= compareValue) count++;
       }
     } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-      const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+      const compareValue = criterionStr.slice(2);
       if (value != compareValue) count++;
     } else if (criterionStr.startsWith('>')) {
       const compareValue = parseFloat(criterionStr.slice(1));
@@ -627,6 +695,159 @@ function countif(range: any[], criterion: any): number {
   return count;
 }
 
+function counta(...args: any[]): number {
+  const values = args.flat(Infinity);
+  let count = 0;
+  for (const value of values) {
+    if (value !== null && value !== undefined && value !== '') {
+      count++;
+    }
+  }
+  return count;
+}
+
+function sumif(range: any[], criterion: any, sumRange?: any[]): number {
+  const rangeValues = range.flat();
+  const sumValues = sumRange ? sumRange.flat() : rangeValues;
+  
+  if (rangeValues.length !== sumValues.length) {
+    return 0; // Range size mismatch
+  }
+  
+  let sum = 0;
+  const criterionStr = String(criterion);
+  
+  for (let i = 0; i < rangeValues.length; i++) {
+    const value = rangeValues[i];
+    let matches = false;
+    
+    if (criterionStr.startsWith('>=')) {
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value >= compareValue;
+      }
+    } else if (criterionStr.startsWith('<=')) {
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value <= compareValue;
+      }
+    } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
+      const compareValue = criterionStr.slice(2);
+      matches = value != compareValue;
+    } else if (criterionStr.startsWith('>')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value > compareValue;
+      }
+    } else if (criterionStr.startsWith('<')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value < compareValue;
+      }
+    } else {
+      matches = value == criterion;
+    }
+    
+    if (matches) {
+      const sumValue = Number(sumValues[i]);
+      if (!isNaN(sumValue)) {
+        sum += sumValue;
+      }
+    }
+  }
+  
+  return sum;
+}
+
+function sumifs(sumRange: any[], ...criteria: any[]): number {
+  const sumValues = sumRange.flat();
+  
+  // Criteria comes in pairs: range1, criterion1, range2, criterion2, etc.
+  const criteriaRanges: any[][] = [];
+  const criteriaValues: any[] = [];
+  
+  for (let i = 0; i < criteria.length; i += 2) {
+    if (i + 1 < criteria.length) {
+      criteriaRanges.push(criteria[i].flat ? criteria[i].flat() : [criteria[i]]);
+      criteriaValues.push(criteria[i + 1]);
+    }
+  }
+  
+  let sum = 0;
+  
+  for (let i = 0; i < sumValues.length; i++) {
+    let allMatch = true;
+    
+    for (let j = 0; j < criteriaRanges.length; j++) {
+      const range = criteriaRanges[j];
+      const criterion = criteriaValues[j];
+      const criterionStr = String(criterion);
+      
+      if (i >= range.length) {
+        allMatch = false;
+        break;
+      }
+      
+      const value = range[i];
+      let matches = false;
+      
+      if (criterionStr.startsWith('>=')) {
+        const compareValue = parseFloat(criterionStr.slice(2));
+        if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+          matches = value >= compareValue;
+        }
+      } else if (criterionStr.startsWith('<=')) {
+        const compareValue = parseFloat(criterionStr.slice(2));
+        if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+          matches = value <= compareValue;
+        }
+      } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
+        const compareValue = criterionStr.slice(2);
+        matches = value != compareValue;
+      } else if (criterionStr.startsWith('>')) {
+        const compareValue = parseFloat(criterionStr.slice(1));
+        if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+          matches = value > compareValue;
+        }
+      } else if (criterionStr.startsWith('<')) {
+        const compareValue = parseFloat(criterionStr.slice(1));
+        if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+          matches = value < compareValue;
+        }
+      } else {
+        matches = value == criterion;
+      }
+      
+      if (!matches) {
+        allMatch = false;
+        break;
+      }
+    }
+    
+    if (allMatch) {
+      const sumValue = Number(sumValues[i]);
+      if (!isNaN(sumValue)) {
+        sum += sumValue;
+      }
+    }
+  }
+  
+  return sum;
+}
+
+function index(array: any[], row: number, column?: number): any {
+  const flatArray = array.flat ? array.flat() : array;
+  
+  // If column is specified, treat as 2D array
+  if (column !== undefined && column > 0) {
+    // This is simplified - in real sheets, would need to know actual dimensions
+    return flatArray[(row - 1) * column + (column - 1)] || '#REF!';
+  }
+  
+  // Single dimension index
+  return flatArray[row - 1] || '#REF!';
+}
+
 function stdev(...args: any[]): number {
   const values = args.flat(Infinity).filter(v => typeof v === 'number' && !isNaN(v));
   const n = values.length;
@@ -634,6 +855,124 @@ function stdev(...args: any[]): number {
   const mean = values.reduce((a, b) => a + b, 0) / n;
   const variance = values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
   return Math.sqrt(variance);
+}
+
+function variance(...args: any[]): number {
+  const values = args.flat(Infinity).filter(v => typeof v === 'number' && !isNaN(v));
+  const n = values.length;
+  if (n < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  return values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+}
+
+function median(...args: any[]): number {
+  const values = args.flat(Infinity).filter(v => typeof v === 'number' && !isNaN(v));
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function percentile(range: any[], k: number): number {
+  const values = range.flat(Infinity).filter(v => typeof v === 'number' && !isNaN(v));
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * k;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if (sorted[base + 1] !== undefined) {
+    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+  }
+  return sorted[base];
+}
+
+function large(range: any[], k: number): number {
+  const values = range.flat(Infinity).filter(v => typeof v === 'number' && !isNaN(v));
+  if (values.length === 0 || k > values.length || k < 1) return 0;
+  const sorted = [...values].sort((a, b) => b - a);
+  return sorted[Math.floor(k) - 1];
+}
+
+function averageif(range: any[], criterion: any, averageRange?: any[]): number {
+  const rangeValues = range.flat();
+  const avgValues = averageRange ? averageRange.flat() : rangeValues;
+  
+  if (rangeValues.length !== avgValues.length) {
+    return 0; // Range size mismatch
+  }
+  
+  let sum = 0;
+  let count = 0;
+  const criterionStr = String(criterion);
+  
+  for (let i = 0; i < rangeValues.length; i++) {
+    const value = rangeValues[i];
+    let matches = false;
+    
+    if (criterionStr.startsWith('>=')) {
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value >= compareValue;
+      }
+    } else if (criterionStr.startsWith('<=')) {
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value <= compareValue;
+      }
+    } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
+      const compareValue = criterionStr.slice(2);
+      matches = value != compareValue;
+    } else if (criterionStr.startsWith('>')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value > compareValue;
+      }
+    } else if (criterionStr.startsWith('<')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        matches = value < compareValue;
+      }
+    } else {
+      matches = value == criterion;
+    }
+    
+    if (matches) {
+      const avgValue = Number(avgValues[i]);
+      if (!isNaN(avgValue)) {
+        sum += avgValue;
+        count++;
+      }
+    }
+  }
+  
+  return count > 0 ? sum / count : 0;
+}
+
+function sumproduct(...arrays: any[]): number {
+  if (arrays.length === 0) return 0;
+  
+  // Flatten all arrays
+  const flattened = arrays.map(arr => arr.flat ? arr.flat(Infinity) : [arr]);
+  
+  // Find minimum length
+  const minLength = Math.min(...flattened.map(arr => arr.length));
+  
+  let total = 0;
+  for (let i = 0; i < minLength; i++) {
+    let product = 1;
+    for (const arr of flattened) {
+      const val = Number(arr[i]);
+      if (!isNaN(val)) {
+        product *= val;
+      } else {
+        product = 0;
+        break;
+      }
+    }
+    total += product;
+  }
+  
+  return total;
 }
 
 // Statistical distribution functions (simplified implementations)
@@ -713,9 +1052,8 @@ function match(lookupValue: any, lookupArray: any[], matchType: number = 1): num
   return -1; // Not found
 }
 
-function indirect(ref: string): any {
-  // This would need access to the cells object
-  // Simplified implementation
+function indirect(ref: string, cells: Record<string, any>): any {
+  // Access the cells object to get the referenced value
   return cells[ref] || '#REF!';
 }
 
@@ -768,6 +1106,13 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
   
   // Parse column and row from cell references (handles both relative A1 and absolute $A$1)
   const parseCell = (cellRef: string): [string, number] => {
+    // Check for column-only reference (e.g., "A" or "$A")
+    const columnOnlyMatch = cellRef.match(/^\\$?([A-Z]+)$/);
+    if (columnOnlyMatch) {
+      // For column-only references, return the column with row 1
+      return [columnOnlyMatch[1], 1];
+    }
+    
     const match = cellRef.match(/^\\$?([A-Z]+)\\$?(\\d+)$/);
     if (!match) throw new Error('Invalid cell reference: ' + cellRef);
     return [match[1], parseInt(match[2])];
@@ -793,8 +1138,15 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
     return col;
   };
   
-  const [startCol, startRow] = parseCell(start);
-  const [endCol, endRow] = parseCell(end);
+  // Handle column-only ranges (e.g., "D:D")
+  const isColumnOnlyRange = start.match(/^\\$?[A-Z]+$/) && end.match(/^\\$?[A-Z]+$/);
+  
+  const [startCol, startRowDefault] = parseCell(start);
+  const [endCol, endRowDefault] = parseCell(end);
+  
+  // For column-only ranges, use rows 1-1000
+  const startRow = isColumnOnlyRange ? 1 : startRowDefault;
+  const endRow = isColumnOnlyRange ? 1000 : endRowDefault;
   
   const startColNum = columnToNumber(startCol);
   const endColNum = columnToNumber(endCol);
@@ -814,11 +1166,159 @@ function getRange(rangeRef: string, cells: Record<string, any>): any[] {
     if (startColNum === endColNum) {
       result.push(...rowValues);
     } else {
-      result.push(rowValues);
+      // Skip rows that are completely empty (all null values)
+      const hasValue = rowValues.some(v => v !== null);
+      if (hasValue || row <= 100) { // Include first 100 rows even if empty for consistency
+        result.push(rowValues);
+      }
     }
   }
   
   return result;
+}
+
+// Financial functions
+function pmt(rate: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
+  if (rate === 0) {
+    return -(pv + fv) / nper;
+  }
+  const pvif = Math.pow(1 + rate, nper);
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -(pv * pvif + fv) / (pmtFactor * (pvif - 1) / rate);
+}
+
+function fv(rate: number, nper: number, pmt: number, pv: number = 0, type: number = 0): number {
+  if (rate === 0) {
+    return -pv - pmt * nper;
+  }
+  const pvif = Math.pow(1 + rate, nper);
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -pv * pvif - pmt * pmtFactor * (pvif - 1) / rate;
+}
+
+function pv(rate: number, nper: number, pmt: number, fv: number = 0, type: number = 0): number {
+  if (rate === 0) {
+    return -pmt * nper - fv;
+  }
+  const pvif = Math.pow(1 + rate, nper);
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  return -(pmt * pmtFactor * (pvif - 1) / rate + fv) / pvif;
+}
+
+function rate(nper: number, pmt: number, pv: number, fv: number = 0, type: number = 0, guess: number = 0.1): number {
+  // Use Newton-Raphson method to find rate
+  const maxIterations = 100;
+  const tolerance = 1e-6;
+  
+  let rate = guess;
+  
+  for (let i = 0; i < maxIterations; i++) {
+    let f: number;
+    let df: number;
+    
+    if (rate === 0) {
+      f = pv + pmt * nper + fv;
+      df = nper * (nper - 1) * pmt / 2;
+    } else {
+      const pvif = Math.pow(1 + rate, nper);
+      const pmtFactor = type === 1 ? (1 + rate) : 1;
+      
+      f = pv * pvif + pmt * pmtFactor * (pvif - 1) / rate + fv;
+      
+      const dpvif = nper * Math.pow(1 + rate, nper - 1);
+      df = pv * dpvif + pmt * pmtFactor * (dpvif * rate - (pvif - 1)) / (rate * rate);
+      
+      if (type === 1) {
+        df += pmt * (pvif - 1) / rate;
+      }
+    }
+    
+    const newRate = rate - f / df;
+    
+    if (Math.abs(newRate - rate) < tolerance) {
+      return newRate;
+    }
+    
+    rate = newRate;
+  }
+  
+  // If no convergence, return error
+  return NaN;
+}
+
+function npv(rate: number, ...cashflows: any[]): number {
+  if (rate === 0) {
+    // When rate is 0, NPV is undefined (division by zero)
+    return NaN;
+  }
+  const flatCashflows = cashflows.flat(Infinity).filter(v => v !== null && v !== undefined);
+  let npvValue = 0;
+  for (let i = 0; i < flatCashflows.length; i++) {
+    npvValue += Number(flatCashflows[i]) / Math.pow(1 + rate, i + 1);
+  }
+  return npvValue;
+}
+
+function irr(...cashflows: any[]): number {
+  // Handle arrays and flatten them
+  const flatCashflows = cashflows.flat(Infinity).filter(v => v !== null && v !== undefined).map(Number);
+  const guess = 0.1;
+  // Use Newton-Raphson method to find IRR
+  const maxIterations = 100;
+  const tolerance = 1e-6;
+  
+  let rate = guess;
+  
+  for (let i = 0; i < maxIterations; i++) {
+    let npvValue = 0;
+    let dnpv = 0;
+    
+    for (let j = 0; j < flatCashflows.length; j++) {
+      const divisor = Math.pow(1 + rate, j);
+      npvValue += flatCashflows[j] / divisor;
+      dnpv -= j * flatCashflows[j] / Math.pow(1 + rate, j + 1);
+    }
+    
+    const newRate = rate - npvValue / dnpv;
+    
+    if (Math.abs(newRate - rate) < tolerance) {
+      return newRate;
+    }
+    
+    rate = newRate;
+  }
+  
+  // If no convergence, return error
+  return NaN;
+}
+
+function nper(rate: number, pmt: number, pv: number, fv: number = 0, type: number = 0): number {
+  if (rate === 0) {
+    return -(pv + fv) / pmt;
+  }
+  const pmtFactor = type === 1 ? (1 + rate) : 1;
+  const log1 = Math.log((pmt * pmtFactor / rate - fv) / (pv + pmt * pmtFactor / rate));
+  const log2 = Math.log(1 + rate);
+  return log1 / log2;
+}
+
+function ipmt(rate: number, per: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
+  const payment = pmt(rate, nper, pv, fv, type);
+  let balance = pv;
+  
+  for (let i = 1; i < per; i++) {
+    const interestPayment = balance * rate;
+    const principalPayment = payment - interestPayment;
+    balance += principalPayment;
+  }
+  
+  return balance * rate;
+}
+
+function ppmt(rate: number, per: number, nper: number, pv: number, fv: number = 0, type: number = 0): number {
+  const payment = pmt(rate, nper, pv, fv, type);
+  const ipmt_val = ipmt(rate, per, nper, pv, fv, type);
+  return payment - ipmt_val;
 }`;
   }
 
