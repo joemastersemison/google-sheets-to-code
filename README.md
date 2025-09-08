@@ -1,6 +1,6 @@
 # Google Sheets to Code Converter
 
-[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/google-sheets-to-code/actions/workflows/test.yml/badge.svg)](https://github.com/YOUR_USERNAME/google-sheets-to-code/actions/workflows/test.yml)
+[![CI/CD Pipeline](https://github.com/joemastersemison/google-sheets-to-code/actions/workflows/test.yml/badge.svg)](https://github.com/joemastersemison/google-sheets-to-code/actions/workflows/test.yml)
 
 Convert Google Sheets formulas and logic into executable TypeScript or Python code.
 
