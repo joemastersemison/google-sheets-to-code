@@ -592,17 +592,35 @@ function countif(range: any[], criterion: any): number {
   let count = 0;
   const criterionStr = String(criterion);
   for (const value of range.flat()) {
-    if (criterionStr.startsWith('>')) {
-      if (value > parseFloat(criterionStr.slice(1))) count++;
-    } else if (criterionStr.startsWith('<')) {
-      if (value < parseFloat(criterionStr.slice(1))) count++;
-    } else if (criterionStr.startsWith('>=')) {
-      if (value >= parseFloat(criterionStr.slice(2))) count++;
+    if (criterionStr.startsWith('>=')) {
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        if (value >= compareValue) count++;
+      }
     } else if (criterionStr.startsWith('<=')) {
-      if (value <= parseFloat(criterionStr.slice(2))) count++;
+      const compareValue = parseFloat(criterionStr.slice(2));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        if (value <= compareValue) count++;
+      }
     } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-      if (value != criterionStr.slice(2)) count++;
+      const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+      if (value != compareValue) count++;
+    } else if (criterionStr.startsWith('>')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        if (value > compareValue) count++;
+      }
+    } else if (criterionStr.startsWith('<')) {
+      const compareValue = parseFloat(criterionStr.slice(1));
+      if (!isNaN(compareValue) && typeof value === 'number' && !isNaN(value)) {
+        if (value < compareValue) count++;
+      }
+    } else if (criterionStr.startsWith('=')) {
+      // Handle explicit equals
+      const compareValue = criterionStr.slice(1);
+      if (value == compareValue) count++;
     } else {
+      // Direct equality comparison
       if (value == criterion) count++;
     }
   }

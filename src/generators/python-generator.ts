@@ -573,22 +573,49 @@ def countif(range_values, criterion):
     values = flatten_values(range_values)
     
     for value in values:
-        if criterion_str.startswith('>'):
-            if value > float(criterion_str[1:]):
-                count += 1
-        elif criterion_str.startswith('<'):
-            if value < float(criterion_str[1:]):
-                count += 1
-        elif criterion_str.startswith('>='):
-            if value >= float(criterion_str[2:]):
-                count += 1
+        if criterion_str.startswith('>='):
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    if value >= compare_value:
+                        count += 1
+            except (ValueError, TypeError):
+                pass
         elif criterion_str.startswith('<='):
-            if value <= float(criterion_str[2:]):
-                count += 1
+            try:
+                compare_value = float(criterion_str[2:])
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    if value <= compare_value:
+                        count += 1
+            except (ValueError, TypeError):
+                pass
         elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
-            if value != criterion_str[2:]:
+            compare_value = criterion_str[2:]
+            if value != compare_value:
+                count += 1
+        elif criterion_str.startswith('>'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    if value > compare_value:
+                        count += 1
+            except (ValueError, TypeError):
+                pass
+        elif criterion_str.startswith('<'):
+            try:
+                compare_value = float(criterion_str[1:])
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    if value < compare_value:
+                        count += 1
+            except (ValueError, TypeError):
+                pass
+        elif criterion_str.startswith('='):
+            # Handle explicit equals
+            compare_value = criterion_str[1:]
+            if str(value) == compare_value:
                 count += 1
         else:
+            # Direct equality comparison
             if value == criterion:
                 count += 1
     return count
