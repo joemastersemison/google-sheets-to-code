@@ -316,8 +316,11 @@ async function watchAndConvert(options: ConvertOptions) {
   const interval = Number.parseInt(options.watchInterval || "30", 10) * 1000;
 
   // Warn about potential rate limits for short intervals
-  if (interval < 60000) { // Less than 1 minute
-    console.warn("⚠️  Short intervals may hit Google API rate limits. Consider 60+ second intervals for production.");
+  if (interval < 60000) {
+    // Less than 1 minute
+    console.warn(
+      "⚠️  Short intervals may hit Google API rate limits. Consider 60+ second intervals for production."
+    );
   }
 
   console.log("👁️  Watch mode enabled");
