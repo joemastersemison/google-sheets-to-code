@@ -671,7 +671,7 @@ function countif(range: any[], criterion: any): number {
         if (value <= compareValue) count++;
       }
     } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-      const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+      const compareValue = criterionStr.slice(2);
       if (value != compareValue) count++;
     } else if (criterionStr.startsWith('>')) {
       const compareValue = parseFloat(criterionStr.slice(1));
@@ -732,7 +732,7 @@ function sumif(range: any[], criterion: any, sumRange?: any[]): number {
         matches = value <= compareValue;
       }
     } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-      const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+      const compareValue = criterionStr.slice(2);
       matches = value != compareValue;
     } else if (criterionStr.startsWith('>')) {
       const compareValue = parseFloat(criterionStr.slice(1));
@@ -802,7 +802,7 @@ function sumifs(sumRange: any[], ...criteria: any[]): number {
           matches = value <= compareValue;
         }
       } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-        const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+        const compareValue = criterionStr.slice(2);
         matches = value != compareValue;
       } else if (criterionStr.startsWith('>')) {
         const compareValue = parseFloat(criterionStr.slice(1));
@@ -920,7 +920,7 @@ function averageif(range: any[], criterion: any, averageRange?: any[]): number {
         matches = value <= compareValue;
       }
     } else if (criterionStr.startsWith('<>') || criterionStr.startsWith('!=')) {
-      const compareValue = criterionStr.slice(criterionStr.startsWith('<>') ? 2 : 2);
+      const compareValue = criterionStr.slice(2);
       matches = value != compareValue;
     } else if (criterionStr.startsWith('>')) {
       const compareValue = parseFloat(criterionStr.slice(1));

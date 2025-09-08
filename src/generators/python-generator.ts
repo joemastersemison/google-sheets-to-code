@@ -743,7 +743,7 @@ def sumif(range_values, criterion, sum_range=None):
             except:
                 pass
         elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
-            compare_value = criterion_str[2:] if criterion_str.startswith('<>') else criterion_str[2:]
+            compare_value = criterion_str[2:]
             if str(value) != compare_value:
                 match = True
         elif criterion_str.startswith('>'):
@@ -819,7 +819,7 @@ def sumifs(sum_range, *criteria):
                 except:
                     pass
             elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
-                compare_value = criterion_str[2:] if criterion_str.startswith('<>') else criterion_str[2:]
+                compare_value = criterion_str[2:]
                 if value != compare_value:
                     match = True
             elif criterion_str.startswith('>'):
@@ -884,7 +884,7 @@ def averageif(range_values, criterion, average_range=None):
             except:
                 pass
         elif criterion_str.startswith('<>') or criterion_str.startswith('!='):
-            compare_value = criterion_str[2:] if criterion_str.startswith('<>') else criterion_str[2:]
+            compare_value = criterion_str[2:]
             if str(value) != compare_value:
                 match = True
         elif criterion_str.startswith('>'):
@@ -987,13 +987,6 @@ def sumproduct(*arrays):
     return total
 
 
-def stdev(*args):
-    """Calculate sample standard deviation."""
-    import math
-    variance = var(*args)
-    return math.sqrt(variance) if variance > 0 else 0
-
-
 # Statistical distribution functions
 def normsdist(z):
     """Cumulative standard normal distribution."""
@@ -1058,26 +1051,6 @@ def tinv(p, df):
 
 
 # Lookup and reference functions
-def match(lookup_value, lookup_array, match_type=1):
-    """Find position of value in array."""
-    for i, value in enumerate(lookup_array):
-        if match_type == 0:
-            # Exact match
-            if value == lookup_value:
-                return i + 1
-        elif match_type == 1:
-            # Largest value less than or equal to lookup_value
-            if value > lookup_value:
-                return i
-            if i == len(lookup_array) - 1:
-                return i + 1
-        elif match_type == -1:
-            # Smallest value greater than or equal to lookup_value
-            if value <= lookup_value:
-                return i + 1
-    return -1
-
-
 def indirect(ref):
     """Get value from indirect reference."""
     # This would need access to the cells dictionary
