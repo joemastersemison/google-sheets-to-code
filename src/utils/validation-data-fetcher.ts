@@ -1,13 +1,12 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { authenticate } from "@google-cloud/local-auth";
-import { GoogleAuth } from "google-auth-library";
 import { google } from "googleapis";
 import { GoogleSheetsReader } from "./sheets-reader.js";
 
+// Type for cell values that can come from Google Sheets
+export type CellValue = string | number | boolean | Date | null | undefined;
+
 export interface ValidationData {
   timestamp: Date;
-  sheets: Map<string, Map<string, any>>;
+  sheets: Map<string, Map<string, CellValue>>;
 }
 
 export class ValidationDataFetcher {
@@ -36,32 +35,14 @@ export class ValidationDataFetcher {
     if (verbose)
       console.log(`📊 Fetching validation data from: ${spreadsheetId}`);
 
-    // We need to access auth through a public method or property
-    // For now, let's re-authenticate in this class
-    const SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
-    const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
-
-    const credentialsContent = JSON.parse(
-      readFileSync(CREDENTIALS_PATH, "utf8")
-    );
-
-    let auth: any;
-    if (credentialsContent.type === "service_account") {
-      const googleAuth = new GoogleAuth({
-        keyFilename: CREDENTIALS_PATH,
-        scopes: SCOPES,
-      });
-      auth = await googleAuth.getClient();
-    } else {
-      // For OAuth2, we'll need to use authenticate from parent
-      auth = await authenticate({
-        scopes: SCOPES,
-        keyfilePath: CREDENTIALS_PATH,
-      });
+    // Use the authenticated client from GoogleSheetsReader
+    const auth = this.sheetsReader.getAuth();
+    if (!auth) {
+      throw new Error("Authentication failed - no auth client available");
     }
 
     const sheets = google.sheets({ version: "v4", auth });
-    const result = new Map<string, Map<string, any>>();
+    const result = new Map<string, Map<string, CellValue>>();
 
     for (const sheetName of sheetNames) {
       if (verbose) console.log(`📄 Fetching values from "${sheetName}"...`);
@@ -74,7 +55,7 @@ export class ValidationDataFetcher {
       });
 
       const rows = response.data.values || [];
-      const cellValues = new Map<string, any>();
+      const cellValues = new Map<string, CellValue>();
 
       for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
         const row = rows[rowIndex];

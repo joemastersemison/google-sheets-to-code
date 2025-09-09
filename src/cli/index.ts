@@ -7,6 +7,8 @@ import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
 import type { SheetConfig } from "../types/index.js";
 import type { DataValidationRule } from "../types/validation.js";
+import type { ValidationResult } from "../utils/validation-comparator.js";
+import type { CellValue } from "../utils/validation-data-fetcher.js";
 import { parseValidationRules } from "../utils/validation-engine.js";
 
 interface ConvertOptions {
@@ -370,7 +372,7 @@ async function convertSheet(options: ConvertOptions) {
     console.log("\n🔍 Starting validation process...");
 
     // Load input data for validation
-    let inputData: Record<string, any> = {};
+    let inputData: Record<string, CellValue> = {};
     if (options.validationInput) {
       if (!existsSync(options.validationInput)) {
         console.warn(
@@ -597,7 +599,7 @@ async function validateGeneratedCode(options: ValidateOptions) {
   validateConfig(config);
 
   // Load input data
-  let inputData: Record<string, any> = {};
+  let inputData: Record<string, CellValue> = {};
   if (options.inputData) {
     if (!existsSync(options.inputData)) {
       throw new Error(`Input data file not found: ${options.inputData}`);
@@ -620,17 +622,22 @@ async function validateGeneratedCode(options: ValidateOptions) {
   const tolerance = Number.parseFloat(options.tolerance || "1e-10");
 
   // Use absolute import or handle import errors
-  let comparator;
+  let comparator: any;
   try {
     const { ValidationComparator } = await import(
-      path.resolve(path.dirname(new URL(import.meta.url).pathname), "../utils/validation-comparator.js")
+      path.resolve(
+        path.dirname(new URL(import.meta.url).pathname),
+        "../utils/validation-comparator.js"
+      )
     );
     comparator = new ValidationComparator();
   } catch (error) {
-    throw new Error(`Failed to load validation comparator: ${error.message}`);
+    throw new Error(
+      `Failed to load validation comparator: ${(error as Error).message}`
+    );
   }
 
-  const allResults: any[] = [];
+  const allResults: ValidationResult[] = [];
 
   if (snapshots > 1) {
     console.log(
@@ -708,7 +715,7 @@ async function validateGeneratedCode(options: ValidateOptions) {
 
   // Generate report if requested
   if (options.output) {
-    const report = comparator.generateReport(allResults, options.output);
+    comparator.generateReport(allResults, options.output);
     console.log(`\n📄 Validation report saved to: ${options.output}`);
   }
 }

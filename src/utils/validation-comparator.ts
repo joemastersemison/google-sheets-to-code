@@ -1,8 +1,7 @@
 import { spawn } from "node:child_process";
 import { promises as fs, writeFileSync } from "node:fs";
 import path from "node:path";
-import { promisify } from "node:util";
-import type { ValidationData } from "./validation-data-fetcher.js";
+import type { CellValue, ValidationData } from "./validation-data-fetcher.js";
 
 /**
  * Safely executes a command using spawn to prevent shell injection
@@ -45,8 +44,8 @@ export interface ValidationResult {
   mismatchedCells: Array<{
     sheet: string;
     cell: string;
-    expected: any;
-    actual: any;
+    expected: CellValue;
+    actual: CellValue;
     difference?: number;
   }>;
   errors: string[];
@@ -72,7 +71,7 @@ export class ValidationComparator {
   async compareWithGeneratedCode(
     validationData: ValidationData,
     generatedFilePath: string,
-    inputData: Record<string, any>,
+    inputData: Record<string, CellValue>,
     outputTabs: string[],
     options: ValidationOptions = {}
   ): Promise<ValidationResult> {
@@ -135,7 +134,13 @@ export class ValidationComparator {
 
           result.totalCells++;
 
-          const generatedValue = generatedSheetData[cellRef];
+          const generatedValue =
+            typeof generatedSheetData === "object" &&
+            generatedSheetData !== null &&
+            !Array.isArray(generatedSheetData) &&
+            !(generatedSheetData instanceof Date)
+              ? (generatedSheetData as Record<string, CellValue>)[cellRef]
+              : undefined;
 
           if (this.valuesMatch(actualValue, generatedValue, tolerance)) {
             result.matchingCells++;
@@ -191,9 +196,9 @@ export class ValidationComparator {
    */
   private async executeGeneratedCode(
     filePath: string,
-    inputData: Record<string, any>,
+    inputData: Record<string, CellValue>,
     verbose: boolean
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, CellValue>> {
     const ext = path.extname(filePath);
     const inputJson = JSON.stringify(inputData);
 
@@ -207,7 +212,7 @@ export class ValidationComparator {
     try {
       let execCommand: string;
       let execArgs: string[];
-      
+
       if (ext === ".ts") {
         // TypeScript - compile and run
         const jsPath = filePath.replace(/\.ts$/, ".js");
@@ -217,7 +222,7 @@ export class ValidationComparator {
           "--target",
           "es2020",
           "--module",
-          "commonjs"
+          "commonjs",
         ]);
         execCommand = "node";
         execArgs = [jsPath, "--input", tempInputFile];
@@ -255,7 +260,11 @@ export class ValidationComparator {
   /**
    * Checks if two values match within tolerance
    */
-  private valuesMatch(actual: any, generated: any, tolerance: number): boolean {
+  private valuesMatch(
+    actual: CellValue,
+    generated: CellValue,
+    tolerance: number
+  ): boolean {
     // Handle null/undefined
     if (actual === null || actual === undefined) {
       return generated === null || generated === undefined || generated === "";

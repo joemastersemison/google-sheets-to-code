@@ -12,6 +12,11 @@ export class GoogleSheetsReader {
   // biome-ignore lint/suspicious/noExplicitAny: Google Auth can return various client types
   private auth: any;
 
+  // Getter to allow other classes to reuse the authenticated client
+  getAuth() {
+    return this.auth;
+  }
+
   async authenticate() {
     const SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
     const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");

@@ -11,6 +11,7 @@ import {
   type ValidationResult,
 } from "./utils/validation-comparator.js";
 import {
+  type CellValue,
   type ValidationData,
   ValidationDataFetcher,
 } from "./utils/validation-data-fetcher.js";
@@ -350,7 +351,7 @@ export class SheetToCodeConverter {
   async validateGeneratedCode(
     generatedFilePath: string,
     validationData: ValidationData,
-    inputData: Record<string, any>,
+    inputData: Record<string, CellValue>,
     options?: ValidationOptions
   ): Promise<ValidationResult> {
     const comparator = new ValidationComparator();
@@ -383,7 +384,7 @@ export class SheetToCodeConverter {
    */
   async convertAndValidate(
     outputFilePath: string,
-    inputData: Record<string, any>,
+    inputData: Record<string, CellValue>,
     validationOptions?: ValidationOptions
   ): Promise<{
     code: string;

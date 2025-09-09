@@ -1,5 +1,6 @@
 import type { Cell } from "../types/index.js";
 import type {
+  CellValue,
   DataValidationRule,
   SheetValidationRules,
   ValidationCondition,
@@ -57,8 +58,8 @@ export class ValidationEngine {
   private getCellsInRange(
     range: string,
     cells: Cell[][]
-  ): Array<{ cell: string; value: any }> {
-    const result: Array<{ cell: string; value: any }> = [];
+  ): Array<{ cell: string; value: CellValue }> {
+    const result: Array<{ cell: string; value: CellValue }> = [];
     const { startCol, startRow, endCol, endRow } = this.parseRange(range);
 
     for (let row = startRow; row <= endRow && row < cells.length; row++) {
@@ -119,7 +120,7 @@ export class ValidationEngine {
   }
 
   private validateValue(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     switch (condition.type) {
@@ -181,11 +182,11 @@ export class ValidationEngine {
   }
 
   private validateNumberBetween(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const min = Number(condition.value1);
@@ -198,11 +199,11 @@ export class ValidationEngine {
   }
 
   private validateNumberGreater(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const threshold = Number(condition.value1);
@@ -214,11 +215,11 @@ export class ValidationEngine {
   }
 
   private validateNumberGreaterEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const threshold = Number(condition.value1);
@@ -232,11 +233,11 @@ export class ValidationEngine {
   }
 
   private validateNumberLess(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const threshold = Number(condition.value1);
@@ -248,11 +249,11 @@ export class ValidationEngine {
   }
 
   private validateNumberLessEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const threshold = Number(condition.value1);
@@ -266,11 +267,11 @@ export class ValidationEngine {
   }
 
   private validateNumberEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const target = Number(condition.value1);
@@ -282,11 +283,11 @@ export class ValidationEngine {
   }
 
   private validateNumberNotEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const target = Number(condition.value1);
@@ -298,11 +299,11 @@ export class ValidationEngine {
   }
 
   private validateNumberNotBetween(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const num = Number(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { isValid: false, reason: "Value is not a number" };
     }
     const min = Number(condition.value1);
@@ -317,7 +318,7 @@ export class ValidationEngine {
   }
 
   private validateTextContains(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -330,7 +331,7 @@ export class ValidationEngine {
   }
 
   private validateTextNotContains(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -343,7 +344,7 @@ export class ValidationEngine {
   }
 
   private validateTextEquals(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -355,7 +356,10 @@ export class ValidationEngine {
     };
   }
 
-  private validateEmail(value: any): { isValid: boolean; reason?: string } {
+  private validateEmail(value: CellValue): {
+    isValid: boolean;
+    reason?: string;
+  } {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isValid = emailRegex.test(String(value));
     return {
@@ -364,7 +368,7 @@ export class ValidationEngine {
     };
   }
 
-  private validateUrl(value: any): { isValid: boolean; reason?: string } {
+  private validateUrl(value: CellValue): { isValid: boolean; reason?: string } {
     try {
       new URL(String(value));
       return { isValid: true };
@@ -374,7 +378,7 @@ export class ValidationEngine {
   }
 
   private validateDateBetween(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -396,7 +400,7 @@ export class ValidationEngine {
   }
 
   private validateDateAfter(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -417,7 +421,7 @@ export class ValidationEngine {
   }
 
   private validateDateBefore(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -438,7 +442,7 @@ export class ValidationEngine {
   }
 
   private validateDateOnOrAfter(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -459,7 +463,7 @@ export class ValidationEngine {
   }
 
   private validateDateOnOrBefore(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -480,7 +484,7 @@ export class ValidationEngine {
   }
 
   private validateDateEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -501,7 +505,7 @@ export class ValidationEngine {
   }
 
   private validateDateNotEqual(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const date = this.parseDate(value);
@@ -521,7 +525,7 @@ export class ValidationEngine {
     };
   }
 
-  private validateDateIsValid(value: any): {
+  private validateDateIsValid(value: CellValue): {
     isValid: boolean;
     reason?: string;
   } {
@@ -533,11 +537,14 @@ export class ValidationEngine {
   }
 
   private validateOneOfList(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const values = condition.values || [];
-    const isValid = values.includes(value);
+    const isValid =
+      value !== undefined &&
+      value !== null &&
+      values.includes(value as string | number);
     return {
       isValid,
       reason: isValid
@@ -546,7 +553,10 @@ export class ValidationEngine {
     };
   }
 
-  private validateCheckbox(value: any): { isValid: boolean; reason?: string } {
+  private validateCheckbox(value: CellValue): {
+    isValid: boolean;
+    reason?: string;
+  } {
     const isValid =
       value === true ||
       value === false ||
@@ -559,7 +569,7 @@ export class ValidationEngine {
   }
 
   private validateLengthBetween(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -575,7 +585,7 @@ export class ValidationEngine {
   }
 
   private validateLengthGreater(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -590,7 +600,7 @@ export class ValidationEngine {
   }
 
   private validateLengthLess(
-    value: any,
+    value: CellValue,
     condition: ValidationCondition
   ): { isValid: boolean; reason?: string } {
     const text = String(value);
@@ -604,18 +614,22 @@ export class ValidationEngine {
     };
   }
 
-  private parseDate(value: any): Date | null {
+  private parseDate(value: CellValue): Date | null {
     if (value instanceof Date) {
       return value;
     }
 
+    if (value === null || value === undefined || typeof value === "boolean") {
+      return null;
+    }
+
     const date = new Date(value);
-    return isNaN(date.getTime()) ? null : date;
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   private getErrorMessage(
     rule: DataValidationRule,
-    value: any,
+    value: CellValue,
     reason?: string
   ): string {
     if (rule.errorMessage?.message) {
@@ -694,7 +708,7 @@ def validate_data(sheet_name: str, data: list) -> dict:
   }
 }
 
-export function parseValidationRules(rulesData: any): DataValidationRule[] {
+export function parseValidationRules(rulesData: unknown): DataValidationRule[] {
   if (!Array.isArray(rulesData)) {
     return [];
   }
