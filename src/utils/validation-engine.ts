@@ -107,12 +107,12 @@ export class ValidationEngine {
 
   private getCellReference(col: number, row: number): string {
     let colRef = "";
-    let colNum = col + 1;
+    let colNum = col;
 
-    while (colNum > 0) {
-      colNum--;
+    while (colNum >= 0) {
       colRef = String.fromCharCode(65 + (colNum % 26)) + colRef;
-      colNum = Math.floor(colNum / 26);
+      colNum = Math.floor(colNum / 26) - 1;
+      if (colNum < 0) break;
     }
 
     return `${colRef}${row + 1}`;
