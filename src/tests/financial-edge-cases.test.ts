@@ -449,7 +449,7 @@ describe("Financial Functions - Edge Cases", () => {
     it("should decrease over time for standard loan", () => {
       const ipmt1 = ipmt(0.1, 1, 10, -1000, 0);
       const ipmt5 = ipmt(0.1, 5, 10, -1000, 0);
-      const ipmt10 = ipmt(0.1, 10, 10, -1000, 0);
+      const _ipmt10 = ipmt(0.1, 10, 10, -1000, 0);
       // With our sign convention, checking absolute values
       expect(Math.abs(ipmt1)).toBeGreaterThan(Math.abs(ipmt5));
       // Note: ipmt10 has unexpected sign due to calculation
