@@ -300,6 +300,10 @@ describe("Integration Tests", () => {
 
   describe("Error Handling Integration", () => {
     it("should handle circular dependencies gracefully", () => {
+      // Mock console.warn to suppress output during test
+      const originalWarn = console.warn;
+      console.warn = () => {}; // Suppress warnings
+
       const sheets = new Map<string, Sheet>([
         [
           "Test",
@@ -357,6 +361,9 @@ describe("Integration Tests", () => {
       expect(analyzer.circularDependencies.size).toBeGreaterThan(0);
       expect(analyzer.circularDependencies.has("Test!A1")).toBe(true);
       expect(analyzer.circularDependencies.has("Test!B1")).toBe(true);
+
+      // Restore console.warn
+      console.warn = originalWarn;
     });
 
     it("should handle malformed formulas gracefully", () => {
