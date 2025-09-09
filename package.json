@@ -19,7 +19,11 @@
     "check": "biome check src/",
     "check:fix": "biome check --write src/",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:examples": "node scripts/test-examples.cjs",
+    "test:examples:debug": "node scripts/test-examples.cjs --verbose",
+    "test:local": "node scripts/test-local-examples.cjs",
+    "test:setup": "node scripts/test-setup.cjs"
   },
   "keywords": [
     "google-sheets",

@@ -5,6 +5,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
 import type { SheetConfig } from "../types/index.js";
+import type { DataValidationRule } from "../types/validation.js";
+import { parseValidationRules } from "../utils/validation-engine.js";
 
 interface ConvertOptions {
   url: string;
@@ -17,6 +19,8 @@ interface ConvertOptions {
   verbose?: boolean;
   watch?: boolean;
   watchInterval?: string;
+  validationRules?: string;
+  generateTests?: boolean;
 }
 
 interface ValidateOptions {
@@ -58,6 +62,11 @@ program
     "Interval between checks when watching (in seconds)",
     "30"
   )
+  .option(
+    "--validation-rules <file>",
+    "Path to JSON file containing data validation rules"
+  )
+  .option("--generate-tests", "Generate unit tests for the output code")
   .action(async (options: ConvertOptions) => {
     try {
       if (options.watch) {
@@ -139,6 +148,10 @@ async function convertSheet(options: ConvertOptions) {
 
   if (options.config) {
     config = loadConfig(options.config);
+    // Override language if provided via command line
+    if (options.language) {
+      config.outputLanguage = options.language as "typescript" | "python";
+    }
   } else {
     // Validate that required options are provided when not using config
     if (!options.url) {
@@ -177,10 +190,31 @@ async function convertSheet(options: ConvertOptions) {
     console.log("Credentials file:", options.credentials);
   }
 
-  // Convert the sheet (enable verbose mode by default to show progress)
-  const converter = new SheetToCodeConverter(config, true);
+  // Load validation rules if provided
+  let validationRules: DataValidationRule[] | undefined;
+  if (options.validationRules) {
+    if (!existsSync(options.validationRules)) {
+      throw new Error(
+        `Validation rules file not found: ${options.validationRules}`
+      );
+    }
+    const rulesData = JSON.parse(readFileSync(options.validationRules, "utf8"));
+    validationRules = parseValidationRules(rulesData);
 
-  const generatedCode = await converter.convert();
+    if (options.verbose) {
+      console.log(`Loaded ${validationRules.length} validation rules`);
+    }
+  }
+
+  // Convert the sheet (enable verbose mode by default to show progress)
+  const converter = new SheetToCodeConverter(
+    config,
+    true,
+    validationRules,
+    options.generateTests
+  );
+
+  const { code: generatedCode, tests } = await converter.convert();
 
   // Determine output file
   let outputFile = options.outputFile;
@@ -192,6 +226,15 @@ async function convertSheet(options: ConvertOptions) {
   // Write output
   writeFileSync(outputFile, generatedCode, "utf8");
   console.log(`✅ Successfully generated code: ${outputFile}`);
+
+  // Write tests if generated
+  if (tests && options.generateTests) {
+    const testExtension =
+      config.outputLanguage === "typescript" ? ".test.ts" : "_test.py";
+    const testFile = outputFile.replace(/\.(ts|py)$/, testExtension);
+    writeFileSync(testFile, tests, "utf8");
+    console.log(`🧪 Successfully generated tests: ${testFile}`);
+  }
 
   // If TypeScript, also compile to JavaScript
   if (config.outputLanguage === "typescript") {

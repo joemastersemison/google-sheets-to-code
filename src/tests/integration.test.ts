@@ -133,10 +133,10 @@ describe("Integration Tests", () => {
       expect(code).toContain("B1: number | string;");
 
       // Verify calculations
-      expect(code).toContain("cells['Input!A1'] = input.Input.A1 ?? 100;");
-      expect(code).toContain("cells['Input!B1'] = input.Input.B1 ?? 0.08;");
+      expect(code).toContain("cells['Input!A1'] = inputData.A1 ?? 100;");
+      expect(code).toContain("cells['Input!B1'] = inputData.B1 ?? 0.08;");
       expect(code).toContain(
-        "cells['Input!C1'] = input.Input.C1 ?? \"Product A\";"
+        "cells['Input!C1'] = inputData.C1 ?? \"Product A\";"
       );
 
       // Verify helper functions are included
@@ -300,6 +300,10 @@ describe("Integration Tests", () => {
 
   describe("Error Handling Integration", () => {
     it("should handle circular dependencies gracefully", () => {
+      // Mock console.warn to suppress output during test
+      const originalWarn = console.warn;
+      console.warn = () => {}; // Suppress warnings
+
       const sheets = new Map<string, Sheet>([
         [
           "Test",
@@ -357,6 +361,9 @@ describe("Integration Tests", () => {
       expect(analyzer.circularDependencies.size).toBeGreaterThan(0);
       expect(analyzer.circularDependencies.has("Test!A1")).toBe(true);
       expect(analyzer.circularDependencies.has("Test!B1")).toBe(true);
+
+      // Restore console.warn
+      console.warn = originalWarn;
     });
 
     it("should handle malformed formulas gracefully", () => {

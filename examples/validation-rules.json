@@ -1,0 +1,103 @@
+[
+  {
+    "range": "Sheet1!A2:A100",
+    "condition": {
+      "type": "NUMBER_BETWEEN",
+      "value1": 0,
+      "value2": 100
+    },
+    "inputMessage": {
+      "title": "Score Input",
+      "message": "Please enter a score between 0 and 100"
+    },
+    "errorMessage": {
+      "title": "Invalid Score",
+      "message": "Score must be between 0 and 100"
+    },
+    "strict": true,
+    "showErrorMessage": true,
+    "showInputMessage": true
+  },
+  {
+    "range": "Sheet1!B2:B100",
+    "condition": {
+      "type": "ONE_OF_LIST",
+      "values": ["Pass", "Fail", "Pending"]
+    },
+    "inputMessage": {
+      "title": "Status",
+      "message": "Select the status from the dropdown"
+    },
+    "errorMessage": {
+      "title": "Invalid Status",
+      "message": "Please select a valid status"
+    },
+    "strict": true,
+    "showErrorMessage": true,
+    "showInputMessage": true,
+    "showDropdown": true
+  },
+  {
+    "range": "Sheet1!C2:C100",
+    "condition": {
+      "type": "TEXT_IS_VALID_EMAIL"
+    },
+    "errorMessage": {
+      "title": "Invalid Email",
+      "message": "Please enter a valid email address"
+    },
+    "strict": false,
+    "showErrorMessage": true,
+    "showInputMessage": false
+  },
+  {
+    "range": "Sheet1!D2:D100",
+    "condition": {
+      "type": "DATE_AFTER",
+      "value1": "2024-01-01"
+    },
+    "inputMessage": {
+      "title": "Date Entry",
+      "message": "Enter a date after January 1, 2024"
+    },
+    "errorMessage": {
+      "title": "Invalid Date",
+      "message": "Date must be after January 1, 2024"
+    },
+    "strict": true,
+    "showErrorMessage": true,
+    "showInputMessage": true
+  },
+  {
+    "range": "Sheet1!E2:E100",
+    "condition": {
+      "type": "LENGTH_BETWEEN",
+      "value1": 5,
+      "value2": 20
+    },
+    "inputMessage": {
+      "title": "Username",
+      "message": "Username must be 5-20 characters"
+    },
+    "errorMessage": {
+      "title": "Invalid Username",
+      "message": "Username must be between 5 and 20 characters"
+    },
+    "strict": true,
+    "showErrorMessage": true,
+    "showInputMessage": true
+  },
+  {
+    "range": "Sheet1!F2:F100",
+    "condition": {
+      "type": "CHECKBOX"
+    },
+    "inputMessage": {
+      "title": "Agreement",
+      "message": "Check to agree to the terms"
+    },
+    "strict": false,
+    "showErrorMessage": false,
+    "showInputMessage": true
+  }
+]

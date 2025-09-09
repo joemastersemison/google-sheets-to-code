@@ -244,6 +244,10 @@ describe("DependencyAnalyzer", () => {
 
   describe("circular dependency detection", () => {
     it("should detect simple circular dependency", () => {
+      // Mock console.warn to suppress output during test
+      const originalWarn = console.warn;
+      console.warn = () => {}; // Suppress warnings
+
       const sheets = new Map([
         [
           "Sheet1",
@@ -274,9 +278,16 @@ describe("DependencyAnalyzer", () => {
       analyzer.detectCircularDependencies();
       expect(analyzer.circularDependencies.has("Sheet1!A1")).toBe(true);
       expect(analyzer.circularDependencies.has("Sheet1!B1")).toBe(true);
+
+      // Restore console.warn
+      console.warn = originalWarn;
     });
 
     it("should detect complex circular dependency", () => {
+      // Mock console.warn to suppress output during test
+      const originalWarn = console.warn;
+      console.warn = () => {}; // Suppress warnings
+
       const sheets = new Map([
         [
           "Sheet1",
@@ -315,6 +326,9 @@ describe("DependencyAnalyzer", () => {
       expect(analyzer.circularDependencies.has("Sheet1!A1")).toBe(true);
       expect(analyzer.circularDependencies.has("Sheet1!B1")).toBe(true);
       expect(analyzer.circularDependencies.has("Sheet1!C1")).toBe(true);
+
+      // Restore console.warn
+      console.warn = originalWarn;
     });
   });
 

@@ -167,7 +167,7 @@ describe("TypeScriptGenerator", () => {
         ["Data"]
       );
 
-      expect(code).toContain("cells['Data!A1'] = input.Data.A1 ?? 100;");
+      expect(code).toContain("cells['Data!A1'] = dataData.A1 ?? 100;");
       expect(code).toContain("cells['Data!B1'] = (cells['Data!A1'] * 2);");
     });
   });
@@ -318,7 +318,7 @@ describe("TypeScriptGenerator", () => {
 
       const code = generator.generate(sheets, new Map(), ["Input"], []);
 
-      expect(code).toContain('input.Input.A1 ?? "Hello \\"World\\""');
+      expect(code).toContain('inputData.A1 ?? "Hello \\"World\\""');
     });
 
     it("should format boolean values correctly", () => {
@@ -334,8 +334,8 @@ describe("TypeScriptGenerator", () => {
 
       const code = generator.generate(sheets, new Map(), ["Input"], []);
 
-      expect(code).toContain("input.Input.A1 ?? true");
-      expect(code).toContain("input.Input.B1 ?? false");
+      expect(code).toContain("inputData.A1 ?? true");
+      expect(code).toContain("inputData.B1 ?? false");
     });
 
     it("should format numeric values correctly", () => {
@@ -351,8 +351,8 @@ describe("TypeScriptGenerator", () => {
 
       const code = generator.generate(sheets, new Map(), ["Input"], []);
 
-      expect(code).toContain("input.Input.A1 ?? 42");
-      expect(code).toContain("input.Input.B1 ?? 3.14");
+      expect(code).toContain("inputData.A1 ?? 42");
+      expect(code).toContain("inputData.B1 ?? 3.14");
     });
   });
 
