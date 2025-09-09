@@ -4,12 +4,18 @@ import { DependencyAnalyzer } from "../utils/dependency-analyzer.js";
 export class PythonGenerator {
   private indentLevel = 0;
   private indentString = "    ";
+  private validationCode?: string;
+
+  setValidationCode(code: string): void {
+    this.validationCode = code;
+  }
 
   generate(
     sheets: Map<string, Sheet>,
     dependencyGraph: Map<string, DependencyNode>,
     inputTabs: string[],
-    outputTabs: string[]
+    outputTabs: string[],
+    includeValidation = false
   ): string {
     const code: string[] = [];
 
@@ -32,6 +38,12 @@ export class PythonGenerator {
         outputTabs
       )
     );
+
+    // Add validation code if provided
+    if (includeValidation && this.validationCode) {
+      code.push("");
+      code.push(this.validationCode);
+    }
 
     return code.join("\n");
   }
@@ -338,10 +350,36 @@ export class PythonGenerator {
 
       switch (operator) {
         case "+":
+          // Use safe_add if either operand contains a function that might return errors
+          if (
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("match") ||
+            right.includes("match") ||
+            left.includes("index") ||
+            right.includes("index") ||
+            left.includes("#")
+          ) {
+            return `safe_add(${left}, ${right})`;
+          }
           return `(${left} + ${right})`;
         case "-":
           return `(${left} - ${right})`;
         case "*":
+          // Use safe_multiply if either operand contains cell references or functions that might return errors
+          if (
+            left.includes("cells.get") ||
+            right.includes("cells.get") ||
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("match") ||
+            right.includes("match") ||
+            left.includes("index") ||
+            right.includes("index") ||
+            left.includes("#")
+          ) {
+            return `safe_multiply(${left}, ${right})`;
+          }
           return `(${left} * ${right})`;
         case "/":
           return `safe_divide(${left}, ${right})`;
@@ -354,12 +392,60 @@ export class PythonGenerator {
         case "<>":
           return `(${left} != ${right})`;
         case "<":
+          // Use safe comparison if operands might contain errors
+          if (
+            left.includes("cells.get") ||
+            right.includes("cells.get") ||
+            left.includes("safe_") ||
+            right.includes("safe_") ||
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("#")
+          ) {
+            return `safe_less(${left}, ${right})`;
+          }
           return `(${left} < ${right})`;
         case ">":
+          // Use safe comparison if operands might contain errors
+          if (
+            left.includes("cells.get") ||
+            right.includes("cells.get") ||
+            left.includes("safe_") ||
+            right.includes("safe_") ||
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("#")
+          ) {
+            return `safe_greater(${left}, ${right})`;
+          }
           return `(${left} > ${right})`;
         case "<=":
+          // Use safe comparison if operands might contain errors
+          if (
+            left.includes("cells.get") ||
+            right.includes("cells.get") ||
+            left.includes("safe_") ||
+            right.includes("safe_") ||
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("#")
+          ) {
+            return `safe_less_equal(${left}, ${right})`;
+          }
           return `(${left} <= ${right})`;
         case ">=":
+          // Use safe comparison if operands might contain errors
+          if (
+            left.includes("cells.get") ||
+            right.includes("cells.get") ||
+            left.includes("safe_") ||
+            right.includes("safe_") ||
+            left.includes("vlookup") ||
+            right.includes("vlookup") ||
+            left.includes("#")
+          ) {
+            return `safe_greater_equal(${left}, ${right})`;
+          }
           return `(${left} >= ${right})`;
         default:
           throw new Error(`Unknown binary operator: ${operator}`);
@@ -384,20 +470,20 @@ export class PythonGenerator {
       case "SUM":
         return `sum_values(${args.join(", ")})`;
       case "ABS":
-        return `abs(${args[0]})`;
+        return `safe_abs(${args[0]})`;
       case "SQRT":
-        return `math.sqrt(${args[0]})`;
+        return `safe_sqrt(${args[0]})`;
       case "ROUND":
         return `round(${args[0]}, ${args[1] || "0"})`;
       case "EXP":
-        return `math.exp(${args[0]})`;
+        return `safe_exp(${args[0]})`;
       case "LN":
-        return `math.log(${args[0]})`;
+        return `safe_log(${args[0]})`;
       case "LOG":
         if (args.length > 1) {
-          return `(math.log(${args[0]}) / math.log(${args[1]}))`;
+          return `safe_log(${args[0]}, ${args[1]})`;
         }
-        return `math.log10(${args[0]})`;
+        return `safe_log10(${args[0]})`;
       case "TRUNC":
         return `math.trunc(${args[0]})`;
 
@@ -518,8 +604,24 @@ export class PythonGenerator {
       case "RATE":
         return `rate(${args.join(", ")})`;
       case "NPV":
+        // NPV needs to unpack range arguments (all args after the rate)
+        if (args.length > 1) {
+          const rate = args[0];
+          const cashflows = args
+            .slice(1)
+            .map((arg) => (arg.includes("get_range") ? `*${arg}` : arg));
+          return `npv(${rate}, ${cashflows.join(", ")})`;
+        }
         return `npv(${args.join(", ")})`;
       case "IRR":
+        // IRR expects a list as first argument, not unpacked values
+        // Keep range as-is (it returns a list)
+        if (args.length === 1) {
+          return `irr(${args[0]})`;
+        } else if (args.length === 2) {
+          // IRR with guess parameter
+          return `irr(${args[0]}, ${args[1]})`;
+        }
         return `irr(${args.join(", ")})`;
 
       default:
@@ -544,34 +646,76 @@ def flatten_values(*args):
 def sum_values(*args):
     """Sum all numeric values."""
     values = flatten_values(*args)
-    return sum(float(v) for v in values if v is not None and str(v).strip() != '')
+    numeric_values = []
+    for v in values:
+        if v is not None and str(v).strip() != '':
+            # Skip error values
+            if isinstance(v, str) and v.startswith('#'):
+                continue
+            try:
+                numeric_values.append(float(v))
+            except (TypeError, ValueError):
+                continue
+    return sum(numeric_values)
 
 
 def average_values(*args):
     """Calculate average of numeric values."""
     values = flatten_values(*args)
-    numeric_values = [float(v) for v in values if v is not None and str(v).strip() != '']
+    numeric_values = []
+    for v in values:
+        if v is not None and str(v).strip() != '':
+            # Skip error values
+            if isinstance(v, str) and v.startswith('#'):
+                continue
+            try:
+                numeric_values.append(float(v))
+            except (TypeError, ValueError):
+                continue
     return sum(numeric_values) / len(numeric_values) if numeric_values else 0
 
 
 def min_values(*args):
     """Find minimum of numeric values."""
     values = flatten_values(*args)
-    numeric_values = [float(v) for v in values if v is not None and str(v).strip() != '']
+    numeric_values = []
+    for v in values:
+        if v is not None and str(v).strip() != '':
+            # Skip error values
+            if isinstance(v, str) and v.startswith('#'):
+                continue
+            try:
+                numeric_values.append(float(v))
+            except (TypeError, ValueError):
+                continue
     return min(numeric_values) if numeric_values else 0
 
 
 def max_values(*args):
     """Find maximum of numeric values."""
     values = flatten_values(*args)
-    numeric_values = [float(v) for v in values if v is not None and str(v).strip() != '']
+    numeric_values = []
+    for v in values:
+        if v is not None and str(v).strip() != '':
+            # Skip error values
+            if isinstance(v, str) and v.startswith('#'):
+                continue
+            try:
+                numeric_values.append(float(v))
+            except (TypeError, ValueError):
+                continue
     return max(numeric_values) if numeric_values else 0
 
 
 def count_values(*args):
     """Count non-empty values."""
     values = flatten_values(*args)
-    return sum(1 for v in values if v is not None and str(v).strip() != '')
+    count = 0
+    for v in values:
+        if v is not None and str(v).strip() != '':
+            # Count error values as non-empty
+            count += 1
+    return count
 
 
 def concatenate_values(*args):
@@ -587,16 +731,227 @@ def safe_divide(numerator, denominator):
         return '#DIV/0!'
 
 
+def safe_multiply(a, b):
+    """Safely multiply two values, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None or b is None:
+            return 0
+        # Handle error values
+        if a == '#N/A' or b == '#N/A':
+            return '#N/A'
+        if a == '#DIV/0!' or b == '#DIV/0!':
+            return '#DIV/0!'
+        if a == '#VALUE!' or b == '#VALUE!':
+            return '#VALUE!'
+        # Convert to float and multiply
+        return float(a) * float(b)
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
+def safe_add(a, b):
+    """Safely add two values, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None or b is None:
+            return 0
+        # Handle error values
+        if a == '#N/A' or b == '#N/A':
+            return '#N/A'
+        if a == '#DIV/0!' or b == '#DIV/0!':
+            return '#DIV/0!'
+        if a == '#VALUE!' or b == '#VALUE!':
+            return '#VALUE!'
+        # Convert to float and add
+        return float(a) + float(b)
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
+def safe_less_equal(a, b):
+    """Safely compare two values with <=, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None:
+            a = 0
+        if b is None:
+            b = 0
+        # Handle error values - error values are always False in comparisons
+        if isinstance(a, str) and a.startswith('#'):
+            return False
+        if isinstance(b, str) and b.startswith('#'):
+            return False
+        # Convert to float and compare
+        return float(a) <= float(b)
+    except (TypeError, ValueError):
+        return False
+
+
+def safe_less(a, b):
+    """Safely compare two values with <, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None:
+            a = 0
+        if b is None:
+            b = 0
+        # Handle error values
+        if isinstance(a, str) and a.startswith('#'):
+            return False
+        if isinstance(b, str) and b.startswith('#'):
+            return False
+        # Convert to float and compare
+        return float(a) < float(b)
+    except (TypeError, ValueError):
+        return False
+
+
+def safe_greater_equal(a, b):
+    """Safely compare two values with >=, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None:
+            a = 0
+        if b is None:
+            b = 0
+        # Handle error values
+        if isinstance(a, str) and a.startswith('#'):
+            return False
+        if isinstance(b, str) and b.startswith('#'):
+            return False
+        # Convert to float and compare
+        return float(a) >= float(b)
+    except (TypeError, ValueError):
+        return False
+
+
+def safe_greater(a, b):
+    """Safely compare two values with >, handling non-numeric values."""
+    try:
+        # Handle None values
+        if a is None:
+            a = 0
+        if b is None:
+            b = 0
+        # Handle error values
+        if isinstance(a, str) and a.startswith('#'):
+            return False
+        if isinstance(b, str) and b.startswith('#'):
+            return False
+        # Convert to float and compare
+        return float(a) > float(b)
+    except (TypeError, ValueError):
+        return False
+
+
+def safe_sqrt(value):
+    """Safely calculate square root, handling non-numeric values."""
+    try:
+        # Handle None values
+        if value is None:
+            return 0
+        # Handle error values
+        if isinstance(value, str) and value.startswith('#'):
+            return value  # Propagate the error
+        # Convert to float and calculate sqrt
+        num_value = float(value)
+        if num_value < 0:
+            return '#NUM!'  # Negative number error
+        return math.sqrt(num_value)
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
+def safe_exp(value):
+    """Safely calculate exponential, handling non-numeric values."""
+    try:
+        if value is None:
+            return 1  # e^0 = 1
+        if isinstance(value, str) and value.startswith('#'):
+            return value  # Propagate the error
+        return math.exp(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return '#VALUE!'
+
+
+def safe_log(value, base=None):
+    """Safely calculate logarithm, handling non-numeric values."""
+    try:
+        if value is None or value == 0:
+            return '#NUM!'  # Log of 0 is undefined
+        if isinstance(value, str) and value.startswith('#'):
+            return value  # Propagate the error
+        num_value = float(value)
+        if num_value <= 0:
+            return '#NUM!'  # Log of negative number
+        if base is not None:
+            if isinstance(base, str) and base.startswith('#'):
+                return base  # Propagate the error
+            base_value = float(base)
+            if base_value <= 0 or base_value == 1:
+                return '#NUM!'
+            return math.log(num_value) / math.log(base_value)
+        return math.log(num_value)
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
+def safe_log10(value):
+    """Safely calculate base-10 logarithm, handling non-numeric values."""
+    try:
+        if value is None or value == 0:
+            return '#NUM!'
+        if isinstance(value, str) and value.startswith('#'):
+            return value  # Propagate the error
+        num_value = float(value)
+        if num_value <= 0:
+            return '#NUM!'
+        return math.log10(num_value)
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
+def safe_abs(value):
+    """Safely calculate absolute value, handling non-numeric values."""
+    try:
+        if value is None:
+            return 0
+        if isinstance(value, str) and value.startswith('#'):
+            return value  # Propagate the error
+        return abs(float(value))
+    except (TypeError, ValueError):
+        return '#VALUE!'
+
+
 def vlookup(lookup_value, table_array, col_index, exact_match=True):
     """VLOOKUP implementation."""
+    # Handle None lookup value
+    if lookup_value is None:
+        return '#N/A'
+    
     for row in table_array:
         if isinstance(row, list) and len(row) >= col_index:
+            # Skip rows where the first value is None
+            if row[0] is None:
+                continue
+            
             if exact_match:
                 if row[0] == lookup_value:
                     return row[col_index - 1]
             else:
-                if row[0] >= lookup_value:
-                    return row[col_index - 1]
+                # For non-exact match, both values must be comparable types
+                try:
+                    # Try numeric comparison first
+                    if isinstance(row[0], (int, float)) and isinstance(lookup_value, (int, float)):
+                        if row[0] >= lookup_value:
+                            return row[col_index - 1]
+                    # Fall back to string comparison
+                    elif str(row[0]) >= str(lookup_value):
+                        return row[col_index - 1]
+                except (TypeError, ValueError):
+                    # Skip incomparable values
+                    continue
     return '#N/A'
 
 
@@ -1008,7 +1363,7 @@ def normsinv(p):
     """Inverse cumulative standard normal distribution."""
     import math
     if p <= 0 or p >= 1:
-        return float('nan')
+        return '#NUM!'
     
     a = [2.50662823884, -18.61500062529, 41.39119773534, -25.44106049637]
     b = [-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833]
@@ -1119,6 +1474,12 @@ def get_range(range_ref: str, cells: dict) -> list:
     
     def parse_cell(cell_ref: str) -> tuple:
         """Parse column and row from cell reference (handles both relative A1 and absolute $A$1)."""
+        # Check for column-only reference (e.g., "D" or "$D")
+        column_only_match = re.match(r'^\\$?([A-Z]+)$', cell_ref)
+        if column_only_match:
+            # For column-only references, return the column with row 1
+            return column_only_match.group(1), 1
+        
         match = re.match(r'^\\$?([A-Z]+)\\$?(\\d+)$', cell_ref)
         if not match:
             raise ValueError(f'Invalid cell reference: {cell_ref}')
@@ -1140,8 +1501,15 @@ def get_range(range_ref: str, cells: dict) -> list:
             num = num // 26
         return col
     
-    start_col, start_row = parse_cell(start_cell)
-    end_col, end_row = parse_cell(end_cell)
+    # Handle column-only ranges (e.g., "D:D")
+    is_column_only_range = start_cell.replace('$', '').isalpha() and end_cell.replace('$', '').isalpha()
+    
+    start_col, start_row_default = parse_cell(start_cell)
+    end_col, end_row_default = parse_cell(end_cell)
+    
+    # For column-only ranges, use rows 1-1000
+    start_row = 1 if is_column_only_range else start_row_default
+    end_row = 1000 if is_column_only_range else end_row_default
     
     start_col_num = column_to_number(start_col)
     end_col_num = column_to_number(end_col)
@@ -1225,14 +1593,14 @@ def rate(nper, pmt, pv, fv=0, type=0, guess=0.1):
         rate = new_rate
     
     # If no convergence, return NaN
-    return float('nan')
+    return '#NUM!'
 
 
 def npv(rate, *cashflows):
     """Calculate net present value."""
     if rate == 0:
         # When rate is 0, NPV is undefined (division by zero)
-        return float('nan')
+        return '#NUM!'
     npv_value = 0
     for i, cashflow in enumerate(cashflows):
         npv_value += cashflow / ((1 + rate) ** (i + 1))
@@ -1263,7 +1631,7 @@ def irr(cashflows, guess=0.1):
         rate = new_rate
     
     # If no convergence, return NaN
-    return float('nan')
+    return '#NUM!'
 
 
 def nper(rate, pmt, pv, fv=0, type=0):

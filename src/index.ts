@@ -1,17 +1,51 @@
 import { PythonGenerator } from "./generators/python-generator.js";
+import { TestGenerator } from "./generators/test-generator.js";
 import { TypeScriptGenerator } from "./generators/typescript-generator.js";
 import { FormulaParser } from "./parsers/formula-parser.js";
 import type { SheetConfig } from "./types/index.js";
+import type { DataValidationRule } from "./types/validation.js";
 import { DependencyAnalyzer } from "./utils/dependency-analyzer.js";
 import { GoogleSheetsReader } from "./utils/sheets-reader.js";
+import { ValidationEngine } from "./utils/validation-engine.js";
 
 export class SheetToCodeConverter {
+  private validationEngine: ValidationEngine;
+  private testGenerator: TestGenerator;
+  private generateTests: boolean;
+
   constructor(
     private config: SheetConfig,
-    private verbose = false
-  ) {}
+    private verbose = false,
+    private validationRules?: DataValidationRule[],
+    generateTests = false
+  ) {
+    this.validationEngine = new ValidationEngine();
+    this.testGenerator = new TestGenerator();
+    this.generateTests = generateTests;
+    if (validationRules) {
+      // Group rules by sheet
+      const rulesBySheet = new Map<string, DataValidationRule[]>();
+      for (const rule of validationRules) {
+        const sheetName = this.extractSheetFromRange(rule.range);
+        if (!rulesBySheet.has(sheetName)) {
+          rulesBySheet.set(sheetName, []);
+        }
+        rulesBySheet.get(sheetName)?.push(rule);
+      }
 
-  async convert(): Promise<string> {
+      // Add rules to validation engine
+      for (const [sheetName, rules] of rulesBySheet) {
+        this.validationEngine.addRules(sheetName, rules);
+      }
+    }
+  }
+
+  private extractSheetFromRange(range: string): string {
+    const sheetMatch = range.match(/^([^!]+)!/);
+    return sheetMatch ? sheetMatch[1] : "Sheet1";
+  }
+
+  async convert(): Promise<{ code: string; tests?: string }> {
     if (this.verbose) {
       console.log("🚀 Starting Google Sheets to Code conversion...");
       console.log(`📋 Input tabs: ${this.config.inputTabs.join(", ")}`);
@@ -184,17 +218,58 @@ export class SheetToCodeConverter {
         ? new TypeScriptGenerator()
         : new PythonGenerator();
 
+    // Generate validation code if rules are present
+    let includeValidation = false;
+    if (this.validationRules && this.validationRules.length > 0) {
+      const validationCode = this.validationEngine.generateValidationCode(
+        this.config.outputLanguage
+      );
+      generator.setValidationCode(validationCode);
+      includeValidation = true;
+      if (this.verbose) {
+        console.log(
+          `📋 Including ${this.validationRules.length} validation rules`
+        );
+      }
+    }
+
     const code = generator.generate(
       parsedSheets,
       dependencyGraph,
       this.config.inputTabs,
-      this.config.outputTabs
+      this.config.outputTabs,
+      includeValidation
     );
 
     if (this.verbose) {
       console.log(`✅ Code generation complete: ${code.length} characters`);
     }
 
-    return code;
+    // Generate tests if requested
+    let tests: string | undefined;
+    if (this.generateTests) {
+      if (this.verbose) {
+        console.log("🧪 Generating unit tests...");
+      }
+      tests =
+        this.config.outputLanguage === "typescript"
+          ? this.testGenerator.generateTypeScriptTests(
+              parsedSheets,
+              dependencyGraph,
+              this.config.inputTabs,
+              this.config.outputTabs
+            )
+          : this.testGenerator.generatePythonTests(
+              parsedSheets,
+              dependencyGraph,
+              this.config.inputTabs,
+              this.config.outputTabs
+            );
+      if (this.verbose) {
+        console.log(`✅ Test generation complete: ${tests.length} characters`);
+      }
+    }
+
+    return { code, tests };
   }
 }

@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.test-output/
 .env
 *.log
 .DS_Store
@@ -13,7 +14,11 @@ token.json
 config.json
 pyproject.toml
 setup.py
+*.d.ts
+*.js
+*.map
 
 // output files
 spreadsheet-logic.*
 generated*.*
+test*.*

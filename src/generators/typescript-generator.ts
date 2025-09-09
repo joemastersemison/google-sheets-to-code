@@ -5,12 +5,18 @@ import { DependencyAnalyzer } from "../utils/dependency-analyzer.js";
 export class TypeScriptGenerator {
   private indentLevel = 0;
   private indentString = "  ";
+  private validationCode?: string;
+
+  setValidationCode(code: string): void {
+    this.validationCode = code;
+  }
 
   generate(
     sheets: Map<string, Sheet>,
     dependencyGraph: Map<string, DependencyNode>,
     inputTabs: string[],
-    outputTabs: string[]
+    outputTabs: string[],
+    includeValidation = false
   ): string {
     const code: string[] = [];
 
@@ -27,6 +33,12 @@ export class TypeScriptGenerator {
         outputTabs
       )
     );
+
+    // Add validation code if provided
+    if (includeValidation && this.validationCode) {
+      code.push("");
+      code.push(this.validationCode);
+    }
 
     return code.join("\n");
   }
@@ -110,12 +122,27 @@ export class TypeScriptGenerator {
 
     // Copy input values
     lines.push(this.indent("// Initialize input values"));
+
+    // Create safe references for input tabs to avoid undefined errors
+    for (const tabName of inputTabs) {
+      const sanitizedName = this.sanitizePropertyName(tabName);
+      const varName = `${sanitizedName.charAt(0).toLowerCase()}${sanitizedName.slice(1)}Data`;
+      lines.push(
+        this.indent(`const ${varName} = input?.${sanitizedName} || {};`)
+      );
+    }
+    if (inputTabs.length > 0) {
+      lines.push("");
+    }
+
     for (const tabName of inputTabs) {
       const sheet = sheets.get(tabName);
       if (sheet) {
+        const sanitizedName = this.sanitizePropertyName(tabName);
+        const varName = `${sanitizedName.charAt(0).toLowerCase()}${sanitizedName.slice(1)}Data`;
         for (const [cellRef, cell] of sheet.cells) {
           if (!cell.formula) {
-            const inputPath = `input.${this.sanitizePropertyName(tabName)}.${this.sanitizePropertyName(cellRef)}`;
+            const inputPath = `${varName}.${this.sanitizePropertyName(cellRef)}`;
             const cellKey = `${tabName}!${cellRef}`;
             lines.push(
               this.indent(

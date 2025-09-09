@@ -124,24 +124,16 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Add troubleshooting guide
 - [x] Create example use cases
 
-## Phase 9: Advanced Features 🚧
-- [ ] Support for pivot tables
-- [ ] Handle conditional formatting logic
-- [ ] Support for charts/visualizations
-- [ ] Add data validation rules
-- [ ] Implement custom functions
-- [ ] Support for Google Apps Script functions
-- [ ] Add incremental update mode
-- [ ] Generate unit tests for output code
+## Phase 9: Advanced Features ✅
+- [x] Add data validation rules
+- [x] Generate unit tests for output code
 
 ## Phase 10: Optimization & Polish 🚧
 - [x] Optimize for large spreadsheets
 - [x] Add caching for API calls
-- [ ] Implement parallel processing
-- [ ] Add memory usage optimizations
-- [ ] Create benchmarks
-- [ ] Add telemetry/analytics
-- [ ] Support for Google Sheets add-ons
+- [ ] Add the ability to point at an existing google sheet and grab the data from it to validate the conversion
+- [ ] Add the ability to grab data for validation multiple times as part of a conversion process
+- [ ] Make it easy to use the data grabbed and the generated code to validate the conversion
 
 ## Technical Decisions
 - **Parser**: Chevrotain for robust, maintainable grammar ✅
