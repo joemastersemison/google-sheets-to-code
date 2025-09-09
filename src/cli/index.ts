@@ -2,6 +2,7 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
 import type { SheetConfig } from "../types/index.js";
@@ -618,10 +619,16 @@ async function validateGeneratedCode(options: ValidateOptions) {
   const delay = Number.parseInt(options.delay || "1000", 10);
   const tolerance = Number.parseFloat(options.tolerance || "1e-10");
 
-  const { ValidationComparator } = await import(
-    "../utils/validation-comparator.js"
-  );
-  const comparator = new ValidationComparator();
+  // Use absolute import or handle import errors
+  let comparator;
+  try {
+    const { ValidationComparator } = await import(
+      path.resolve(path.dirname(new URL(import.meta.url).pathname), "../utils/validation-comparator.js")
+    );
+    comparator = new ValidationComparator();
+  } catch (error) {
+    throw new Error(`Failed to load validation comparator: ${error.message}`);
+  }
 
   const allResults: any[] = [];
 
