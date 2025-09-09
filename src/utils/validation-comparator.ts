@@ -1,10 +1,42 @@
-import { exec } from "node:child_process";
+import { spawn } from "node:child_process";
 import { promises as fs, writeFileSync } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { ValidationData } from "./validation-data-fetcher.js";
 
-const execAsync = promisify(exec);
+/**
+ * Safely executes a command using spawn to prevent shell injection
+ */
+function execSafe(
+  command: string,
+  args: string[]
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: "pipe" });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`Command failed with exit code ${code}: ${stderr}`));
+      }
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+  });
+}
 
 export interface ValidationResult {
   passed: boolean;
@@ -173,29 +205,39 @@ export class ValidationComparator {
     await fs.writeFile(tempInputFile, inputJson);
 
     try {
-      let command: string;
+      let execCommand: string;
+      let execArgs: string[];
+      
       if (ext === ".ts") {
         // TypeScript - compile and run
         const jsPath = filePath.replace(/\.ts$/, ".js");
-        await execAsync(
-          `npx tsc ${filePath} --target es2020 --module commonjs`
-        );
-        command = `node ${jsPath} --input ${tempInputFile}`;
+        await execSafe("npx", [
+          "tsc",
+          filePath,
+          "--target",
+          "es2020",
+          "--module",
+          "commonjs"
+        ]);
+        execCommand = "node";
+        execArgs = [jsPath, "--input", tempInputFile];
       } else if (ext === ".py") {
         // Python
-        command = `python3 ${filePath} --input ${tempInputFile}`;
+        execCommand = "python3";
+        execArgs = [filePath, "--input", tempInputFile];
       } else if (ext === ".js") {
         // JavaScript
-        command = `node ${filePath} --input ${tempInputFile}`;
+        execCommand = "node";
+        execArgs = [filePath, "--input", tempInputFile];
       } else {
         throw new Error(`Unsupported file extension: ${ext}`);
       }
 
       if (verbose) {
-        console.log(`⚙️  Executing: ${command}`);
+        console.log(`⚙️  Executing: ${execCommand} ${execArgs.join(" ")}`);
       }
 
-      const { stdout, stderr } = await execAsync(command);
+      const { stdout, stderr } = await execSafe(execCommand, execArgs);
 
       if (stderr && verbose) {
         console.warn(`⚠️  Stderr output: ${stderr}`);
