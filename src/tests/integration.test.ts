@@ -133,10 +133,10 @@ describe("Integration Tests", () => {
       expect(code).toContain("B1: number | string;");
 
       // Verify calculations
-      expect(code).toContain("cells['Input!A1'] = input.Input.A1 ?? 100;");
-      expect(code).toContain("cells['Input!B1'] = input.Input.B1 ?? 0.08;");
+      expect(code).toContain("cells['Input!A1'] = inputData.A1 ?? 100;");
+      expect(code).toContain("cells['Input!B1'] = inputData.B1 ?? 0.08;");
       expect(code).toContain(
-        "cells['Input!C1'] = input.Input.C1 ?? \"Product A\";"
+        "cells['Input!C1'] = inputData.C1 ?? \"Product A\";"
       );
 
       // Verify helper functions are included

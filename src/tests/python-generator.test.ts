@@ -263,7 +263,7 @@ describe("PythonGenerator", () => {
       const code = generator.generate(sheets, dependencyGraph, [], ["Test"]);
 
       expect(code).toContain(
-        "('Positive' if (cells.get('Test!A1') > 0) else 'Negative')"
+        "('Positive' if safe_greater(cells.get('Test!A1'), 0) else 'Negative')"
       );
     });
 
@@ -295,7 +295,7 @@ describe("PythonGenerator", () => {
 
       const code = generator.generate(sheets, dependencyGraph, [], ["Test"]);
 
-      expect(code).toContain("math.sqrt(16)");
+      expect(code).toContain("safe_sqrt(16)");
     });
 
     it("should handle string functions", () => {
