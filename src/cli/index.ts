@@ -7,7 +7,10 @@ import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
 import type { SheetConfig } from "../types/index.js";
 import type { DataValidationRule } from "../types/validation.js";
-import type { ValidationResult } from "../utils/validation-comparator.js";
+import type {
+  ValidationComparator,
+  ValidationResult,
+} from "../utils/validation-comparator.js";
 import type { CellValue } from "../utils/validation-data-fetcher.js";
 import { parseValidationRules } from "../utils/validation-engine.js";
 
@@ -622,7 +625,7 @@ async function validateGeneratedCode(options: ValidateOptions) {
   const tolerance = Number.parseFloat(options.tolerance || "1e-10");
 
   // Use absolute import or handle import errors
-  let comparator: any;
+  let comparator: ValidationComparator;
   try {
     const { ValidationComparator } = await import(
       path.resolve(
