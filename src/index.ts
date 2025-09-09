@@ -1,5 +1,4 @@
 import { PythonGenerator } from "./generators/python-generator.js";
-import { TestGenerator } from "./generators/test-generator.js";
 import { TypeScriptGenerator } from "./generators/typescript-generator.js";
 import { FormulaParser } from "./parsers/formula-parser.js";
 import type { SheetConfig } from "./types/index.js";
@@ -10,7 +9,7 @@ import { ValidationEngine } from "./utils/validation-engine.js";
 
 export class SheetToCodeConverter {
   private validationEngine: ValidationEngine;
-  private testGenerator: TestGenerator;
+  // private testGenerator: TestGenerator; // TODO: Implement test generator
   private generateTests: boolean;
 
   constructor(
@@ -20,7 +19,7 @@ export class SheetToCodeConverter {
     generateTests = false
   ) {
     this.validationEngine = new ValidationEngine();
-    this.testGenerator = new TestGenerator();
+    // this.testGenerator = new TestGenerator(); // TODO: Implement test generator
     this.generateTests = generateTests;
     if (validationRules) {
       // Group rules by sheet
@@ -249,25 +248,26 @@ export class SheetToCodeConverter {
     let tests: string | undefined;
     if (this.generateTests) {
       if (this.verbose) {
-        console.log("🧪 Generating unit tests...");
+        console.log("🧪 Test generation requested but not yet implemented");
       }
-      tests =
-        this.config.outputLanguage === "typescript"
-          ? this.testGenerator.generateTypeScriptTests(
-              parsedSheets,
-              dependencyGraph,
-              this.config.inputTabs,
-              this.config.outputTabs
-            )
-          : this.testGenerator.generatePythonTests(
-              parsedSheets,
-              dependencyGraph,
-              this.config.inputTabs,
-              this.config.outputTabs
-            );
-      if (this.verbose) {
-        console.log(`✅ Test generation complete: ${tests.length} characters`);
-      }
+      // TODO: Implement test generation
+      // tests =
+      //   this.config.outputLanguage === "typescript"
+      //     ? this.testGenerator.generateTypeScriptTests(
+      //         parsedSheets,
+      //         dependencyGraph,
+      //         this.config.inputTabs,
+      //         this.config.outputTabs
+      //       )
+      //     : this.testGenerator.generatePythonTests(
+      //         parsedSheets,
+      //         dependencyGraph,
+      //         this.config.inputTabs,
+      //         this.config.outputTabs
+      //       );
+      // if (this.verbose) {
+      //   console.log(`✅ Test generation complete: ${tests.length} characters`);
+      // }
     }
 
     return { code, tests };
