@@ -128,12 +128,12 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - [x] Add data validation rules
 - [x] Generate unit tests for output code
 
-## Phase 10: Optimization & Polish 🚧
+## Phase 10: Optimization & Polish ✅
 - [x] Optimize for large spreadsheets
 - [x] Add caching for API calls
-- [ ] Add the ability to point at an existing google sheet and grab the data from it to validate the conversion
-- [ ] Add the ability to grab data for validation multiple times as part of a conversion process
-- [ ] Make it easy to use the data grabbed and the generated code to validate the conversion
+- [x] Add the ability to point at an existing google sheet and grab the data from it to validate the conversion
+- [x] Add the ability to grab data for validation multiple times as part of a conversion process
+- [x] Make it easy to use the data grabbed and the generated code to validate the conversion
 
 ## Technical Decisions
 - **Parser**: Chevrotain for robust, maintainable grammar ✅
@@ -168,3 +168,6 @@ Convert Google Sheets logic (formulas, references, calculations) into executable
 - ✅ Support for hybrid sheets with both static data and formulas
 - ✅ Column-only range references (e.g., A:A, D:D)
 - ✅ Advanced inventory tracking with EOQ and ABC classification
+- ✅ Validation system to compare generated code output with actual Google Sheets data
+- ✅ Support for multiple validation snapshots (useful for time-based functions)
+- ✅ CLI commands for validation with configurable tolerance and reporting

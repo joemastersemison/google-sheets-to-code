@@ -5,6 +5,16 @@ import type { SheetConfig } from "./types/index.js";
 import type { DataValidationRule } from "./types/validation.js";
 import { DependencyAnalyzer } from "./utils/dependency-analyzer.js";
 import { GoogleSheetsReader } from "./utils/sheets-reader.js";
+import {
+  ValidationComparator,
+  type ValidationOptions,
+  type ValidationResult,
+} from "./utils/validation-comparator.js";
+import {
+  type CellValue,
+  type ValidationData,
+  ValidationDataFetcher,
+} from "./utils/validation-data-fetcher.js";
 import { ValidationEngine } from "./utils/validation-engine.js";
 
 export class SheetToCodeConverter {
@@ -44,7 +54,11 @@ export class SheetToCodeConverter {
     return sheetMatch ? sheetMatch[1] : "Sheet1";
   }
 
-  async convert(): Promise<{ code: string; tests?: string }> {
+  async convert(): Promise<{
+    code: string;
+    tests?: string;
+    validationData?: ValidationData;
+  }> {
     if (this.verbose) {
       console.log("🚀 Starting Google Sheets to Code conversion...");
       console.log(`📋 Input tabs: ${this.config.inputTabs.join(", ")}`);
@@ -163,11 +177,32 @@ export class SheetToCodeConverter {
           try {
             // Replace named ranges in formula before parsing
             let expandedFormula = cell.formula;
-            for (const [name, range] of namedRanges) {
-              // Replace named range with actual cell reference
-              // Use word boundaries to avoid partial matches
-              const regex = new RegExp(`\\b${name}\\b`, "g");
-              expandedFormula = expandedFormula.replace(regex, range);
+            let hasUndefinedRanges = false;
+
+            // First check if any named ranges in the formula are undefined or empty
+            const formulaNamedRanges =
+              cell.formula.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) || [];
+            for (const possibleName of formulaNamedRanges) {
+              // Check if this is a named range (exists in our map)
+              if (namedRanges.has(possibleName)) {
+                const range = namedRanges.get(possibleName);
+                if (!range || range.trim() === "") {
+                  // Named range exists but is empty/undefined
+                  // Replace with a reference that will evaluate to empty/null
+                  const regex = new RegExp(`\\b${possibleName}\\b`, "g");
+                  expandedFormula = expandedFormula.replace(regex, '""');
+                  hasUndefinedRanges = true;
+                  if (this.verbose) {
+                    console.log(
+                      `  ⚠️  Named range "${possibleName}" is undefined/empty in ${sheetName}!${cellRef}, replacing with empty string`
+                    );
+                  }
+                } else {
+                  // Normal replacement
+                  const regex = new RegExp(`\\b${possibleName}\\b`, "g");
+                  expandedFormula = expandedFormula.replace(regex, range);
+                }
+              }
             }
 
             if (expandedFormula !== cell.formula && this.verbose) {
@@ -181,6 +216,7 @@ export class SheetToCodeConverter {
               formula: expandedFormula, // Store expanded formula
               originalFormula: cell.formula, // Keep original for reference
               parsedFormula: parser.parse(expandedFormula),
+              hasUndefinedNamedRanges: hasUndefinedRanges,
             });
             parsedFormulas++;
           } catch (error) {
@@ -270,6 +306,139 @@ export class SheetToCodeConverter {
       // }
     }
 
-    return { code, tests };
+    return { code, tests, validationData: undefined };
+  }
+
+  /**
+   * Fetches actual data from Google Sheets for validation
+   */
+  async fetchValidationData(verbose = false): Promise<ValidationData> {
+    const fetcher = new ValidationDataFetcher();
+    const allSheets = [...this.config.inputTabs, ...this.config.outputTabs];
+
+    if (verbose) {
+      console.log("📊 Fetching validation data from Google Sheets...");
+    }
+
+    const validationData = await fetcher.fetchValidationData(
+      this.config.spreadsheetUrl,
+      allSheets,
+      verbose
+    );
+
+    if (verbose) {
+      console.log(
+        `✅ Validation data fetched at ${validationData.timestamp.toISOString()}`
+      );
+    }
+
+    return validationData;
+  }
+
+  /**
+   * Fetches validation data multiple times (useful for time-based functions)
+   */
+  async fetchValidationDataMultipleTimes(
+    count = 3,
+    delayMs = 1000,
+    verbose = false
+  ): Promise<ValidationData[]> {
+    const fetcher = new ValidationDataFetcher();
+    const allSheets = [...this.config.inputTabs, ...this.config.outputTabs];
+
+    if (verbose) {
+      console.log(
+        `📊 Fetching validation data ${count} times with ${delayMs}ms delay...`
+      );
+    }
+
+    const results = await fetcher.fetchValidationDataMultipleTimes(
+      this.config.spreadsheetUrl,
+      allSheets,
+      count,
+      delayMs,
+      verbose
+    );
+
+    if (verbose) {
+      console.log(`✅ Fetched ${results.length} validation snapshots`);
+    }
+
+    return results;
+  }
+
+  /**
+   * Validates generated code against actual Google Sheets data
+   */
+  async validateGeneratedCode(
+    generatedFilePath: string,
+    validationData: ValidationData,
+    inputData: Record<string, CellValue>,
+    options?: ValidationOptions
+  ): Promise<ValidationResult> {
+    const comparator = new ValidationComparator();
+
+    if (this.verbose || options?.verbose) {
+      console.log("🔍 Validating generated code against actual data...");
+    }
+
+    const result = await comparator.compareWithGeneratedCode(
+      validationData,
+      generatedFilePath,
+      inputData,
+      this.config.outputTabs,
+      options
+    );
+
+    if (this.verbose || options?.verbose) {
+      const status = result.passed ? "✅ PASSED" : "❌ FAILED";
+      console.log(`Validation ${status}`);
+      console.log(
+        `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}%`
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Performs a complete conversion with validation
+   */
+  async convertAndValidate(
+    outputFilePath: string,
+    inputData: Record<string, CellValue>,
+    validationOptions?: ValidationOptions
+  ): Promise<{
+    code: string;
+    validationResult: ValidationResult;
+    validationData: ValidationData;
+  }> {
+    // First, fetch validation data
+    const validationData = await this.fetchValidationData(this.verbose);
+
+    // Generate the code
+    const { code } = await this.convert();
+
+    // Write the code to file
+    const fs = await import("node:fs");
+    await fs.promises.writeFile(outputFilePath, code);
+
+    if (this.verbose) {
+      console.log(`📝 Generated code written to: ${outputFilePath}`);
+    }
+
+    // Validate the generated code
+    const validationResult = await this.validateGeneratedCode(
+      outputFilePath,
+      validationData,
+      inputData,
+      validationOptions
+    );
+
+    return {
+      code,
+      validationResult,
+      validationData,
+    };
   }
 }

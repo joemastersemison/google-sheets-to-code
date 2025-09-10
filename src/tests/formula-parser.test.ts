@@ -287,6 +287,57 @@ describe("FormulaParser", () => {
         children: [],
       });
     });
+
+    it("should parse functions with dots in names", () => {
+      // T.INV function
+      const tInvResult = parser.parse("=T.INV(0.95,10)");
+      expect(tInvResult).toEqual({
+        type: "function",
+        value: "T.INV",
+        children: [
+          { type: "literal", value: "0.95" },
+          { type: "literal", value: "10" },
+        ],
+      });
+
+      // T.DIST function
+      const tDistResult = parser.parse("=T.DIST(2,10,TRUE)");
+      expect(tDistResult).toEqual({
+        type: "function",
+        value: "T.DIST",
+        children: [
+          { type: "literal", value: "2" },
+          { type: "literal", value: "10" },
+          { type: "literal", value: "TRUE" },
+        ],
+      });
+
+      // NORM.S.INV function
+      const normSInvResult = parser.parse("=NORM.S.INV(0.95)");
+      expect(normSInvResult).toEqual({
+        type: "function",
+        value: "NORM.S.INV",
+        children: [{ type: "literal", value: "0.95" }],
+      });
+
+      // Complex formula with T.INV
+      const complexResult = parser.parse("=T.INV(A1,B1)*C1");
+      expect(complexResult).toEqual({
+        type: "operator",
+        value: "*",
+        children: [
+          {
+            type: "function",
+            value: "T.INV",
+            children: [
+              { type: "reference", value: "A1" },
+              { type: "reference", value: "B1" },
+            ],
+          },
+          { type: "reference", value: "C1" },
+        ],
+      });
+    });
   });
 
   describe("Complex Expressions", () => {
@@ -316,6 +367,89 @@ describe("FormulaParser", () => {
       expect(result.type).toBe("function");
       expect(result.value).toBe("ARRAY");
       expect(result.children).toHaveLength(2);
+    });
+  });
+
+  describe("Complex Sheet References", () => {
+    it("should parse sheet reference after minus operator", () => {
+      const result = parser.parse("=10-SQCdata!J774");
+      expect(result).toEqual({
+        type: "operator",
+        value: "-",
+        children: [
+          { type: "literal", value: "10" },
+          { type: "reference", value: "SQCdata!J774" },
+        ],
+      });
+    });
+
+    it("should parse sheet references in parentheses with operators", () => {
+      const result = parser.parse("=(SQCdata!J774-SQCdata!$AH$2)");
+      expect(result).toEqual({
+        type: "operator",
+        value: "-",
+        children: [
+          { type: "reference", value: "SQCdata!J774" },
+          { type: "reference", value: "SQCdata!$AH$2" },
+        ],
+      });
+    });
+
+    it("should parse complex formula with multiple sheet references", () => {
+      const formula =
+        '=IF(ISBLANK(SQCdata!J774),"",IF(SQCdata!$AJ$2="Yes",(SQCdata!J774-SQCdata!$AH$2)/SQCdata!$AI$2,SQCdata!J774))';
+      const result = parser.parse(formula);
+
+      expect(result.type).toBe("function");
+      expect(result.value).toBe("IF");
+      expect(result.children).toHaveLength(3);
+
+      // First argument: ISBLANK(SQCdata!J774)
+      expect(result.children?.[0].type).toBe("function");
+      expect(result.children?.[0].value).toBe("ISBLANK");
+      expect(result.children?.[0].children?.[0].value).toBe("SQCdata!J774");
+
+      // Second argument: empty string
+      expect(result.children?.[1].type).toBe("literal");
+      expect(result.children?.[1].value).toBe("");
+
+      // Third argument: nested IF
+      expect(result.children?.[2].type).toBe("function");
+      expect(result.children?.[2].value).toBe("IF");
+    });
+
+    it("should parse sheet reference with spaces in quoted name", () => {
+      const result = parser.parse("='My Sheet'!A1");
+      expect(result).toEqual({
+        type: "reference",
+        value: "'My Sheet'!A1",
+      });
+    });
+
+    it("should parse sheet reference with special characters in quoted name", () => {
+      const result = parser.parse("='John''s Data'!B2");
+      expect(result).toEqual({
+        type: "reference",
+        value: "'John''s Data'!B2",
+      });
+    });
+
+    it("should handle sheet references in arithmetic expressions", () => {
+      const result = parser.parse("=(1-SQCdata!AD2)*S781+SQCdata!AD2*Q782");
+      expect(result.type).toBe("operator");
+      expect(result.value).toBe("+");
+
+      // Left side: (1-SQCdata!AD2)*S781
+      const leftSide = result.children?.[0];
+      expect(leftSide?.type).toBe("operator");
+      expect(leftSide?.value).toBe("*");
+
+      // Right side: SQCdata!AD2*Q782
+      const rightSide = result.children?.[1];
+      expect(rightSide?.type).toBe("operator");
+      expect(rightSide?.value).toBe("*");
+      expect(rightSide?.children?.[0].value).toBe("SQCdata!AD2");
+      expect(rightSide?.children?.[1].value).toBe("Q782");
     });
   });
 

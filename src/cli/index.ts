@@ -1,11 +1,24 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
 import { Command } from "commander";
 import { SheetToCodeConverter } from "../index.js";
 import type { SheetConfig } from "../types/index.js";
 import type { DataValidationRule } from "../types/validation.js";
+import type {
+  ValidationComparator,
+  ValidationResult,
+} from "../utils/validation-comparator.js";
+import type { CellValue } from "../utils/validation-data-fetcher.js";
 import { parseValidationRules } from "../utils/validation-engine.js";
 
 interface ConvertOptions {
@@ -21,10 +34,29 @@ interface ConvertOptions {
   watchInterval?: string;
   validationRules?: string;
   generateTests?: boolean;
+  validate?: boolean;
+  validationInput?: string;
+  validationTolerance?: string;
+  validationSnapshots?: string;
+  validationDelay?: string;
 }
 
 interface ValidateOptions {
   config: string;
+  generatedFile: string;
+  inputData?: string;
+  tolerance?: string;
+  snapshots?: string;
+  delay?: string;
+  verbose?: boolean;
+  output?: string;
+}
+
+interface CaptureValidationOptions {
+  config: string;
+  url?: string;
+  name?: string;
+  verbose?: boolean;
 }
 
 const program = new Command();
@@ -67,6 +99,29 @@ program
     "Path to JSON file containing data validation rules"
   )
   .option("--generate-tests", "Generate unit tests for the output code")
+  .option(
+    "--validate",
+    "Validate generated code against actual Google Sheets data"
+  )
+  .option(
+    "--validation-input <file>",
+    "Path to JSON file containing input data for validation"
+  )
+  .option(
+    "--validation-tolerance <number>",
+    "Numeric tolerance for floating point comparisons",
+    "1e-10"
+  )
+  .option(
+    "--validation-snapshots <number>",
+    "Number of validation snapshots to take",
+    "1"
+  )
+  .option(
+    "--validation-delay <ms>",
+    "Delay in milliseconds between validation snapshots",
+    "1000"
+  )
   .action(async (options: ConvertOptions) => {
     try {
       if (options.watch) {
@@ -126,9 +181,37 @@ program
 
 program
   .command("validate")
+  .description("Validate generated code against actual Google Sheets data")
+  .requiredOption("-c, --config <file>", "Path to configuration file")
+  .requiredOption("-g, --generated-file <file>", "Path to generated code file")
+  .option("-i, --input-data <file>", "Path to JSON file containing input data")
+  .option(
+    "-t, --tolerance <number>",
+    "Numeric tolerance for floating point comparisons",
+    "1e-10"
+  )
+  .option(
+    "-s, --snapshots <number>",
+    "Number of validation snapshots to take",
+    "1"
+  )
+  .option("-d, --delay <ms>", "Delay in milliseconds between snapshots", "1000")
+  .option("-o, --output <file>", "Output validation report to file")
+  .option("--verbose", "Enable verbose output")
+  .action(async (options: ValidateOptions) => {
+    try {
+      await validateGeneratedCode(options);
+    } catch (error) {
+      console.error("Validation error:", (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("validate-config")
   .description("Validate a configuration file")
   .requiredOption("-c, --config <file>", "Path to configuration file")
-  .action(async (options: ValidateOptions) => {
+  .action(async (options: { config: string }) => {
     try {
       const config = loadConfig(options.config);
       console.log("Configuration is valid:");
@@ -138,6 +221,114 @@ program
       process.exit(1);
     }
   });
+
+program
+  .command("capture-validation")
+  .description("Capture validation data from a Google Sheet for testing")
+  .requiredOption("-c, --config <file>", "Path to configuration file")
+  .option(
+    "-u, --url <url>",
+    "Optional: URL of a different sheet to capture data from"
+  )
+  .option(
+    "-n, --name <name>",
+    "Optional: Custom name for the validation snapshot"
+  )
+  .option("--verbose", "Enable verbose output")
+  .action(async (options: CaptureValidationOptions) => {
+    try {
+      await captureValidationData(options);
+    } catch (error) {
+      console.error("Capture error:", (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+async function captureValidationData(options: CaptureValidationOptions) {
+  // Load configuration
+  const config = loadConfig(options.config);
+  validateConfig(config);
+
+  // Use custom URL if provided, otherwise use the one from config
+  const url = options.url || config.spreadsheetUrl;
+
+  // Get the base name from the config file
+  const configBaseName = path.basename(
+    options.config,
+    path.extname(options.config)
+  );
+
+  // Create the converter with the potentially different URL
+  const captureConfig = { ...config, spreadsheetUrl: url };
+  const converter = new SheetToCodeConverter(
+    captureConfig,
+    options.verbose || false
+  );
+
+  if (options.verbose) {
+    console.log(`📸 Capturing validation data from: ${url}`);
+    console.log(`📋 Input tabs: ${config.inputTabs.join(", ")}`);
+    console.log(`📋 Output tabs: ${config.outputTabs.join(", ")}`);
+  }
+
+  // Fetch the validation data (actual values from the sheet)
+  const validationData = await converter.fetchValidationData(options.verbose);
+
+  // Extract input and output data
+  const capturedData: {
+    timestamp: string;
+    sourceUrl: string;
+    config: string;
+    inputData: Record<string, Record<string, CellValue>>;
+    outputData: Record<string, Record<string, CellValue>>;
+  } = {
+    timestamp: validationData.timestamp.toISOString(),
+    sourceUrl: url,
+    config: options.config,
+    inputData: {},
+    outputData: {},
+  };
+
+  // Organize data by input and output tabs
+  for (const [sheetName, cellValues] of validationData.sheets) {
+    const cellData: Record<string, CellValue> = {};
+    for (const [cellRef, value] of cellValues) {
+      cellData[cellRef] = value;
+    }
+
+    if (config.inputTabs.includes(sheetName)) {
+      capturedData.inputData[sheetName] = cellData;
+    } else if (config.outputTabs.includes(sheetName)) {
+      capturedData.outputData[sheetName] = cellData;
+    }
+  }
+
+  // Create directory structure: .validation/${configBaseName}/
+  const validationDir = path.join(".validation", configBaseName);
+  if (!existsSync(validationDir)) {
+    mkdirSync(validationDir, { recursive: true });
+    if (options.verbose) {
+      console.log(`📁 Created validation directory: ${validationDir}`);
+    }
+  }
+
+  // Generate filename with UUID or custom name
+  const snapshotName = options.name || randomUUID();
+  const snapshotFile = path.join(validationDir, `${snapshotName}.json`);
+
+  // Write the captured data
+  writeFileSync(snapshotFile, JSON.stringify(capturedData, null, 2), "utf8");
+
+  console.log(`✅ Validation data captured: ${snapshotFile}`);
+  console.log(
+    `📊 Input cells captured: ${Object.values(capturedData.inputData).reduce((sum: number, sheet: Record<string, CellValue>) => sum + Object.keys(sheet).length, 0)}`
+  );
+  console.log(
+    `📊 Output cells captured: ${Object.values(capturedData.outputData).reduce((sum: number, sheet: Record<string, CellValue>) => sum + Object.keys(sheet).length, 0)}`
+  );
+
+  return capturedData;
+}
 
 async function convertSheet(options: ConvertOptions) {
   if (options.verbose) {
@@ -300,6 +491,121 @@ async function convertSheet(options: ConvertOptions) {
     console.log(`Output tabs: ${config.outputTabs.join(", ")}`);
     console.log(`Code length: ${generatedCode.length} characters`);
   }
+
+  // Perform validation if requested
+  if (options.validate) {
+    console.log("\n🔍 Starting validation process...");
+
+    // Load input data for validation
+    let inputData: Record<string, CellValue> = {};
+    if (options.validationInput) {
+      if (!existsSync(options.validationInput)) {
+        console.warn(
+          `⚠️  Validation input file not found: ${options.validationInput}`
+        );
+        console.log("Using empty input data for validation");
+      } else {
+        const inputContent = readFileSync(options.validationInput, "utf8");
+        inputData = JSON.parse(inputContent);
+      }
+    }
+
+    // Perform validation
+    const snapshots = Number.parseInt(options.validationSnapshots || "1", 10);
+    const delay = Number.parseInt(options.validationDelay || "1000", 10);
+    const tolerance = Number.parseFloat(options.validationTolerance || "1e-10");
+
+    if (snapshots > 1) {
+      const validationResults =
+        await converter.fetchValidationDataMultipleTimes(
+          snapshots,
+          delay,
+          options.verbose
+        );
+
+      console.log(
+        `\n📸 Collected ${validationResults.length} validation snapshots`
+      );
+
+      for (let i = 0; i < validationResults.length; i++) {
+        console.log(
+          `\n🧪 Validating snapshot ${i + 1}/${validationResults.length}...`
+        );
+
+        const result = await converter.validateGeneratedCode(
+          outputFile,
+          validationResults[i],
+          inputData,
+          {
+            tolerance,
+            verbose: options.verbose,
+            ignoreEmptyCells: true,
+          }
+        );
+
+        const status = result.passed ? "✅ PASSED" : "❌ FAILED";
+        console.log(`Snapshot ${i + 1}: ${status}`);
+        console.log(
+          `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}% (${result.matchingCells}/${result.totalCells} cells)`
+        );
+
+        if (!result.passed && result.mismatchedCells.length > 0) {
+          console.log("First 5 mismatches:");
+          for (const mismatch of result.mismatchedCells.slice(0, 5)) {
+            console.log(
+              `  - ${mismatch.sheet}!${mismatch.cell}: expected ${mismatch.expected}, got ${mismatch.actual}`
+            );
+          }
+        }
+      }
+    } else {
+      const validationData = await converter.fetchValidationData(
+        options.verbose
+      );
+
+      const result = await converter.validateGeneratedCode(
+        outputFile,
+        validationData,
+        inputData,
+        {
+          tolerance,
+          verbose: options.verbose,
+          ignoreEmptyCells: true,
+        }
+      );
+
+      const status = result.passed
+        ? "✅ VALIDATION PASSED"
+        : "❌ VALIDATION FAILED";
+      console.log(`\n${status}`);
+      console.log(
+        `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}% (${result.matchingCells}/${result.totalCells} cells)`
+      );
+
+      if (!result.passed) {
+        if (result.errors.length > 0) {
+          console.log("\nErrors:");
+          for (const error of result.errors) {
+            console.log(`  - ${error}`);
+          }
+        }
+
+        if (result.mismatchedCells.length > 0) {
+          console.log("\nFirst 10 mismatches:");
+          for (const mismatch of result.mismatchedCells.slice(0, 10)) {
+            console.log(
+              `  - ${mismatch.sheet}!${mismatch.cell}: expected ${mismatch.expected}, got ${mismatch.actual}`
+            );
+          }
+          if (result.mismatchedCells.length > 10) {
+            console.log(
+              `  ... and ${result.mismatchedCells.length - 10} more mismatches`
+            );
+          }
+        }
+      }
+    }
+  }
 }
 
 function loadConfig(configPath: string): SheetConfig {
@@ -410,6 +716,243 @@ async function watchAndConvert(options: ConvertOptions) {
 
   // Keep the process running
   process.stdin.resume();
+}
+
+async function validateGeneratedCode(options: ValidateOptions) {
+  // Load configuration
+  const config = loadConfig(options.config);
+  validateConfig(config);
+
+  // Check for stored validation snapshots
+  const configBaseName = path.basename(
+    options.config,
+    path.extname(options.config)
+  );
+  const validationDir = path.join(".validation", configBaseName);
+  const storedSnapshots: Array<{
+    file: string;
+    data: {
+      timestamp: string;
+      sourceUrl: string;
+      config: string;
+      inputData: Record<string, Record<string, CellValue>>;
+      outputData: Record<string, Record<string, CellValue>>;
+    };
+  }> = [];
+
+  if (existsSync(validationDir)) {
+    const files = readdirSync(validationDir).filter((f) => f.endsWith(".json"));
+    if (files.length > 0 && options.verbose) {
+      console.log(
+        `📁 Found ${files.length} stored validation snapshot(s) in ${validationDir}`
+      );
+    }
+
+    for (const file of files) {
+      const filePath = path.join(validationDir, file);
+      const content = readFileSync(filePath, "utf8");
+      try {
+        const data = JSON.parse(content);
+        storedSnapshots.push({ file, data });
+      } catch (error) {
+        console.warn(`⚠️  Failed to parse ${file}: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  // Load input data
+  let inputData: Record<string, CellValue> = {};
+  if (options.inputData) {
+    if (!existsSync(options.inputData)) {
+      throw new Error(`Input data file not found: ${options.inputData}`);
+    }
+    const inputContent = readFileSync(options.inputData, "utf8");
+    inputData = JSON.parse(inputContent);
+  }
+
+  // Check generated file exists
+  if (!existsSync(options.generatedFile)) {
+    throw new Error(`Generated file not found: ${options.generatedFile}`);
+  }
+
+  // Create converter
+  const converter = new SheetToCodeConverter(config, options.verbose || false);
+
+  // Parse validation options
+  const snapshots = Number.parseInt(options.snapshots || "1", 10);
+  const delay = Number.parseInt(options.delay || "1000", 10);
+  const tolerance = Number.parseFloat(options.tolerance || "1e-10");
+
+  // Use absolute import or handle import errors
+  let comparator: ValidationComparator;
+  try {
+    const { ValidationComparator } = await import(
+      path.resolve(
+        path.dirname(new URL(import.meta.url).pathname),
+        "../utils/validation-comparator.js"
+      )
+    );
+    comparator = new ValidationComparator();
+  } catch (error) {
+    throw new Error(
+      `Failed to load validation comparator: ${(error as Error).message}`
+    );
+  }
+
+  const allResults: ValidationResult[] = [];
+
+  // If we have stored snapshots, use them instead of fetching new data
+  if (storedSnapshots.length > 0) {
+    console.log(
+      `\n🗃️  Using ${storedSnapshots.length} stored validation snapshot(s)`
+    );
+
+    for (let i = 0; i < storedSnapshots.length; i++) {
+      const snapshot = storedSnapshots[i];
+      console.log(`\n🧪 Validating with snapshot: ${snapshot.file}`);
+
+      // Convert stored data to ValidationData format
+      const validationData = {
+        timestamp: new Date(snapshot.data.timestamp),
+        sheets: new Map<string, Map<string, CellValue>>(),
+      };
+
+      // Reconstruct the sheets map from stored output data
+      for (const [sheetName, cellData] of Object.entries(
+        snapshot.data.outputData
+      )) {
+        const cellMap = new Map<string, CellValue>();
+        for (const [cellRef, value] of Object.entries(
+          cellData as Record<string, CellValue>
+        )) {
+          cellMap.set(cellRef, value);
+        }
+        validationData.sheets.set(sheetName, cellMap);
+      }
+
+      // Use stored input data if available, otherwise use provided input data
+      let testInputData = inputData;
+      if (snapshot.data.inputData) {
+        testInputData = {};
+        for (const [sheetName, cellData] of Object.entries(
+          snapshot.data.inputData
+        )) {
+          for (const [cellRef, value] of Object.entries(
+            cellData as Record<string, CellValue>
+          )) {
+            // Flatten sheet!cell format for input data
+            testInputData[`${sheetName}!${cellRef}`] = value;
+          }
+        }
+      }
+
+      const result = await converter.validateGeneratedCode(
+        options.generatedFile,
+        validationData,
+        testInputData,
+        {
+          tolerance,
+          verbose: options.verbose,
+          ignoreEmptyCells: true,
+        }
+      );
+
+      allResults.push(result);
+
+      const status = result.passed ? "✅ PASSED" : "❌ FAILED";
+      console.log(`Result: ${status}`);
+      console.log(
+        `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}% (${result.matchingCells}/${result.totalCells} cells)`
+      );
+
+      if (!result.passed && result.mismatchedCells.length > 0) {
+        console.log("First 5 mismatches:");
+        for (const mismatch of result.mismatchedCells.slice(0, 5)) {
+          console.log(
+            `  - ${mismatch.sheet}!${mismatch.cell}: expected ${mismatch.expected}, got ${mismatch.actual}`
+          );
+        }
+      }
+    }
+  } else if (snapshots > 1) {
+    console.log(
+      `📸 Fetching ${snapshots} validation snapshots with ${delay}ms delay...`
+    );
+
+    const validationSnapshots =
+      await converter.fetchValidationDataMultipleTimes(
+        snapshots,
+        delay,
+        options.verbose
+      );
+
+    for (let i = 0; i < validationSnapshots.length; i++) {
+      console.log(
+        `\n🧪 Validating snapshot ${i + 1}/${validationSnapshots.length}...`
+      );
+
+      const result = await converter.validateGeneratedCode(
+        options.generatedFile,
+        validationSnapshots[i],
+        inputData,
+        {
+          tolerance,
+          verbose: options.verbose,
+          ignoreEmptyCells: true,
+        }
+      );
+
+      allResults.push(result);
+
+      const status = result.passed ? "✅ PASSED" : "❌ FAILED";
+      console.log(`Snapshot ${i + 1}: ${status}`);
+      console.log(
+        `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}%`
+      );
+    }
+  } else {
+    console.log("📊 Fetching validation data from Google Sheets...");
+
+    const validationData = await converter.fetchValidationData(options.verbose);
+
+    console.log("🧪 Validating generated code...");
+
+    const result = await converter.validateGeneratedCode(
+      options.generatedFile,
+      validationData,
+      inputData,
+      {
+        tolerance,
+        verbose: options.verbose,
+        ignoreEmptyCells: true,
+      }
+    );
+
+    allResults.push(result);
+
+    const status = result.passed
+      ? "✅ VALIDATION PASSED"
+      : "❌ VALIDATION FAILED";
+    console.log(`\n${status}`);
+    console.log(
+      `Accuracy: ${((result.matchingCells / result.totalCells) * 100).toFixed(2)}% (${result.matchingCells}/${result.totalCells} cells)`
+    );
+
+    if (!result.passed && result.mismatchedCells.length > 0) {
+      console.log("\nFirst 10 mismatches:");
+      for (const mismatch of result.mismatchedCells.slice(0, 10)) {
+        console.log(
+          `  - ${mismatch.sheet}!${mismatch.cell}: expected ${mismatch.expected}, got ${mismatch.actual}`
+        );
+      }
+    }
+  }
+
+  // Generate report if requested
+  if (options.output) {
+    comparator.generateReport(allResults, options.output);
+    console.log(`\n📄 Validation report saved to: ${options.output}`);
+  }
 }
 
 program.parse();

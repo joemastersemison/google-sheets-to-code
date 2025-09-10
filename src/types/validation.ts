@@ -62,6 +62,9 @@ export interface DataValidationRule {
   showInputMessage: boolean;
 }
 
+// Type for cell values
+export type CellValue = string | number | boolean | Date | null | undefined;
+
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
@@ -70,14 +73,14 @@ export interface ValidationResult {
 
 export interface ValidationError {
   cell: string;
-  value: any;
+  value: CellValue;
   rule: DataValidationRule;
   message: string;
 }
 
 export interface ValidationWarning {
   cell: string;
-  value: any;
+  value: CellValue;
   rule: DataValidationRule;
   message: string;
 }

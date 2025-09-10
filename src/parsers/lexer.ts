@@ -11,7 +11,7 @@ export const False = createToken({
 
 export const FunctionToken = createToken({
   name: "Function",
-  pattern: /[A-Z][A-Z0-9_]*/i,
+  pattern: /[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)*/i,
   longer_alt: True,
 });
 
@@ -19,8 +19,8 @@ export const SheetReference = createToken({
   name: "SheetReference",
   // Matches both:
   // 1. Quoted sheet names: 'My Sheet'! or 'John''s Data'! (with escaped quotes)
-  // 2. Unquoted sheet names: Sheet1! or My_Sheet!
-  pattern: /(?:'(?:[^']|'')+'!|[A-Za-z0-9_-]+!)/,
+  // 2. Unquoted sheet names: Sheet1! or My_Sheet! (no hyphens allowed in unquoted names)
+  pattern: /(?:'(?:[^']|'')+'!|[A-Za-z][A-Za-z0-9_]*!)/,
 });
 
 export const CellReference = createToken({

@@ -96,7 +96,10 @@ function rate(
   return NaN;
 }
 
-function npv(rate: number, ...cashflows: any[]): number {
+function npv(
+  rate: number,
+  ...cashflows: (number | number[] | null | undefined)[]
+): number {
   if (rate === 0) {
     // When rate is 0, NPV is undefined (division by zero)
     return NaN;
@@ -111,7 +114,10 @@ function npv(rate: number, ...cashflows: any[]): number {
   return npvValue;
 }
 
-function irr(cashflows: any[], guess: number = 0.1): number {
+function irr(
+  cashflows: (number | number[] | null | undefined)[],
+  guess: number = 0.1
+): number {
   // Handle arrays and flatten them
   const flatCashflows = cashflows
     .flat(Infinity)
@@ -449,7 +455,7 @@ describe("Financial Functions - Edge Cases", () => {
     it("should decrease over time for standard loan", () => {
       const ipmt1 = ipmt(0.1, 1, 10, -1000, 0);
       const ipmt5 = ipmt(0.1, 5, 10, -1000, 0);
-      const ipmt10 = ipmt(0.1, 10, 10, -1000, 0);
+      const _ipmt10 = ipmt(0.1, 10, 10, -1000, 0);
       // With our sign convention, checking absolute values
       expect(Math.abs(ipmt1)).toBeGreaterThan(Math.abs(ipmt5));
       // Note: ipmt10 has unexpected sign due to calculation
@@ -481,10 +487,10 @@ describe("Financial Functions - Edge Cases", () => {
 
     it("should handle IRR with guess far from solution", () => {
       const result1 = irr([-1000, 1200], 0.01);
-      const result2 = irr([-1000, 1200], 10);
+      const _result2 = irr([-1000, 1200], 10);
       // With extreme guess, may not converge to same value
       expect(result1).toBeCloseTo(0.2, 5);
-      // result2 may be NaN or different
+      // _result2 may be NaN or different
     });
   });
 
