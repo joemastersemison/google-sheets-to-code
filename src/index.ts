@@ -177,11 +177,32 @@ export class SheetToCodeConverter {
           try {
             // Replace named ranges in formula before parsing
             let expandedFormula = cell.formula;
-            for (const [name, range] of namedRanges) {
-              // Replace named range with actual cell reference
-              // Use word boundaries to avoid partial matches
-              const regex = new RegExp(`\\b${name}\\b`, "g");
-              expandedFormula = expandedFormula.replace(regex, range);
+            let hasUndefinedRanges = false;
+
+            // First check if any named ranges in the formula are undefined or empty
+            const formulaNamedRanges =
+              cell.formula.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) || [];
+            for (const possibleName of formulaNamedRanges) {
+              // Check if this is a named range (exists in our map)
+              if (namedRanges.has(possibleName)) {
+                const range = namedRanges.get(possibleName);
+                if (!range || range.trim() === "") {
+                  // Named range exists but is empty/undefined
+                  // Replace with a reference that will evaluate to empty/null
+                  const regex = new RegExp(`\\b${possibleName}\\b`, "g");
+                  expandedFormula = expandedFormula.replace(regex, '""');
+                  hasUndefinedRanges = true;
+                  if (this.verbose) {
+                    console.log(
+                      `  ⚠️  Named range "${possibleName}" is undefined/empty in ${sheetName}!${cellRef}, replacing with empty string`
+                    );
+                  }
+                } else {
+                  // Normal replacement
+                  const regex = new RegExp(`\\b${possibleName}\\b`, "g");
+                  expandedFormula = expandedFormula.replace(regex, range);
+                }
+              }
             }
 
             if (expandedFormula !== cell.formula && this.verbose) {
@@ -195,6 +216,7 @@ export class SheetToCodeConverter {
               formula: expandedFormula, // Store expanded formula
               originalFormula: cell.formula, // Keep original for reference
               parsedFormula: parser.parse(expandedFormula),
+              hasUndefinedNamedRanges: hasUndefinedRanges,
             });
             parsedFormulas++;
           } catch (error) {

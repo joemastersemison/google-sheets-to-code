@@ -1,359 +1,675 @@
-# How to Validate Google Sheets to Code Conversions
+# How to Convert Your Existing Google Sheet to Code
 
-This guide walks you through creating a Google Sheet with comprehensive test cases and validating that the generated code produces identical results.
+This guide helps you convert your existing complex Google Sheet into executable TypeScript or Python code that produces identical results.
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
-2. [Setting Up Your Google Sheet](#setting-up-your-google-sheet)
-3. [Creating Validation Test Cases](#creating-validation-test-cases)
-4. [Configuring the Converter](#configuring-the-converter)
-5. [Running Conversion with Validation](#running-conversion-with-validation)
-6. [Interpreting Results](#interpreting-results)
-7. [Troubleshooting](#troubleshooting)
+2. [Quick Start](#quick-start)
+3. [Preparing Your Existing Sheet](#preparing-your-existing-sheet)
+4. [Running the Conversion](#running-the-conversion)
+5. [Comprehensive Validation Guide](#comprehensive-validation-guide)
+6. [Troubleshooting Common Issues](#troubleshooting-common-issues)
+7. [Advanced Usage](#advanced-usage)
 
 ## Prerequisites
 
-1. **Google Sheets API Access** - Follow the setup instructions:
-   ```bash
-   npm run cli -- setup
-   ```
-   Save your `credentials.json` in the project root.
+1. **Node.js and npm** installed on your system
 
-2. **Node.js and npm** installed
-
-3. **Clone and install the project**:
+2. **Clone and install this project**:
    ```bash
    git clone <repository-url>
    cd google-sheets-to-code
    npm install
    ```
 
-## Setting Up Your Google Sheet
+3. **Google Sheets API Access** - Set up authentication:
+   ```bash
+   npm run cli -- setup
+   ```
+   Follow the instructions to either:
+   - Use a Service Account (recommended for automation)
+   - Use OAuth2 (for personal use)
+   
+   Save your `credentials.json` in the project root.
 
-### 1. Create a New Google Sheet
+4. **Share your existing sheet** (if using Service Account):
+   - Open your Google Sheet
+   - Click "Share"
+   - Add the service account email (found in `credentials.json` as `client_email`)
+   - Give it "Viewer" access
 
-Create a new Google Sheet with the following structure:
+## Quick Start
 
-#### Sheet 1: "Input" (Input Tab)
-This sheet contains the input data that will be provided to your calculations.
+If you want to convert your sheet immediately:
 
-```
-   A          B          C
-1  Quantity   Price      Discount
-2  10         25.50      0.1
-3  5          100.00     0.15
-4  20         15.75      0.05
-5  8          50.00      0.2
-```
-
-#### Sheet 2: "Calculations" (Output Tab)
-This sheet contains formulas that reference the Input sheet.
-
-```
-   A                B                      C                        D
-1  Subtotal         Discount Amount        Total                    Tax (8%)
-2  =Input!A2*Input!B2  =A2*Input!C2          =A2-B2                   =C2*0.08
-3  =Input!A3*Input!B3  =A3*Input!C3          =A3-B3                   =C3*0.08
-4  =Input!A4*Input!B4  =A4*Input!C4          =A4-B4                   =C4*0.08
-5  =Input!A5*Input!B5  =A5*Input!C5          =A5-B5                   =C5*0.08
-```
-
-#### Sheet 3: "Validation" (Output Tab)
-This sheet tests various formula types for comprehensive validation.
-
-### 2. Add 10+ Different Validation Test Cases
-
-Create these formulas in the "Validation" sheet to test different scenarios:
-
-```
-   A                           B                               C
-1  Test Case                   Formula                         Description
-2  Basic Math                  =Input!A2+Input!B2              Addition
-3  Complex Math                 =POWER(Input!A2,2)+SQRT(Input!B2) Power and Square Root
-4  Conditional                  =IF(Input!C2>0.1,"High","Low") IF statement
-5  Nested IF                    =IF(Input!A2>10,IF(Input!B2>50,"Premium","Standard"),"Basic") Nested conditions
-6  VLOOKUP                      =VLOOKUP(Input!A2,Input!A2:C5,3,FALSE) Lookup function
-7  Statistical                  =AVERAGE(Input!B2:B5)           Average calculation
-8  Count Functions              =COUNTIF(Input!C2:C5,">0.1")    Conditional counting
-9  Text Functions               =CONCATENATE("Order: ",Input!A2," units") String operations
-10 Date Functions               =TODAY()                        Current date
-11 Financial                    =PMT(0.05/12,60,-Input!B2*100) Payment calculation
-12 Array Formula                =SUM(Input!A2:A5*Input!B2:B5)  Array multiplication
-13 Round Functions              =ROUND(Input!B2*Input!C2,2)    Rounding
-14 Min/Max                      =MAX(Input!B2:B5)               Maximum value
-15 Logical Operations           =AND(Input!A2>5,Input!B2<100)  AND operation
+```bash
+# Convert your existing sheet to TypeScript
+npm run cli -- convert \
+  --url "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit" \
+  --input-tabs "Data,Settings" \
+  --output-tabs "Calculations,Reports" \
+  --output-file my-spreadsheet.ts
 ```
 
-### 3. Share the Sheet (for Service Account)
+This will generate code that:
+- Reads data from "Data" and "Settings" tabs
+- Calculates all formulas from "Calculations" and "Reports" tabs
+- Returns the same results as your Google Sheet
 
-If using a service account:
-1. Click "Share" in your Google Sheet
-2. Add the service account email (found in your `credentials.json` as `client_email`)
-3. Give it "Viewer" access
+## Preparing Your Existing Sheet
 
-## Configuring the Converter
+### Understanding Input vs Output Tabs
 
-### 1. Create a Configuration File
+Before conversion, identify which tabs in your sheet are:
+- **Input tabs**: Contain raw data (numbers, text, dates) that feed into calculations
+- **Output tabs**: Contain formulas that reference input tabs or other cells
 
-Create `validation-config.json`:
+Example structure of a typical financial model:
+```
+Input Tabs:
+- "Assumptions" - interest rates, growth rates, etc.
+- "Historical Data" - past performance data
+- "Scenarios" - different scenario parameters
+
+Output Tabs:
+- "Projections" - formulas calculating future values
+- "Summary" - formulas aggregating results
+- "Dashboard" - formulas for key metrics
+```
+
+### Checking Formula Compatibility
+
+Review the formulas in your output tabs. Currently supported functions include:
+- Math: `SUM`, `AVERAGE`, `MIN`, `MAX`, `ROUND`, `POWER`, `SQRT`, `ABS`
+- Logic: `IF`, `AND`, `OR`, `NOT`, `IFERROR`, `IFNA`
+- Lookup: `VLOOKUP`, `HLOOKUP`, `INDEX`, `MATCH`
+- Text: `CONCATENATE`, `UPPER`, `LOWER`, `TRIM`, `LEN`
+- Date: `TODAY`, `NOW`, `DATE`, `YEAR`, `MONTH`, `DAY`
+- Statistical: `COUNT`, `COUNTA`, `COUNTIF`, `SUMIF`, `AVERAGEIF`
+- Financial: `PMT`, `FV`, `PV`, `NPV`, `IRR`
+
+See the full list in [README.md](README.md#supported-formulas).
+
+### Handling Named Ranges
+
+If your sheet uses named ranges, they will be automatically detected and used in the generated code. No special preparation needed!
+
+## Running the Conversion
+
+### Option 1: Using Command Line Arguments
+
+```bash
+npm run cli -- convert \
+  --url "YOUR_SHEET_URL" \
+  --input-tabs "Input1,Input2,Input3" \
+  --output-tabs "Output1,Output2" \
+  --language typescript \
+  --output-file generated-code.ts \
+  --verbose
+```
+
+### Option 2: Using a Configuration File (Recommended)
+
+Create a `config.json` file:
 
 ```json
 {
   "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
-  "inputTabs": ["Input"],
-  "outputTabs": ["Calculations", "Validation"],
+  "inputTabs": ["Assumptions", "Data", "Settings"],
+  "outputTabs": ["Calculations", "Summary", "Reports"],
   "outputLanguage": "typescript"
 }
 ```
 
-### 2. Create Input Data for Validation
+Then run:
+```bash
+npm run cli -- convert --config config.json --output-file my-model.ts
+```
 
-Create `validation-input.json` with different test data:
+### Option 3: For Python Output
+
+```bash
+npm run cli -- convert \
+  --config config.json \
+  --language python \
+  --output-file my-model.py
+```
+
+## Comprehensive Validation Guide
+
+Validation is crucial to ensure your generated code produces exactly the same results as your Google Sheet. The validation process works by:
+1. Fetching actual values from your Google Sheet
+2. Running the generated code with test inputs
+3. Comparing every cell value between the sheet and the code output
+
+### Understanding Validation Workflow
+
+The validation system supports two main workflows:
+
+#### Workflow 1: Validate During Conversion (Integrated)
+This runs validation immediately after generating code:
+```bash
+npm run cli -- convert \
+  --config config.json \
+  --output-file my-model.ts \
+  --validate \
+  --validation-input test-input.json \
+  --validation-tolerance 1e-10
+```
+
+#### Workflow 2: Separate Validation (Recommended for Testing)
+First generate the code, then validate separately:
+```bash
+# Step 1: Generate code
+npm run cli -- convert \
+  --config config.json \
+  --output-file my-model.ts
+
+# Step 2: Validate against the original sheet
+npm run cli -- validate \
+  --config config.json \
+  --generated-file my-model.ts \
+  --input-data test-input.json \
+  --tolerance 1e-10 \
+  --output validation-report.md
+```
+
+### Creating Validation Test Cases
+
+#### Basic Test Input File
+Create `test-input.json` with values for your input cells:
 
 ```json
 {
-  "Input": {
-    "A2": 15,
-    "B2": 30.00,
-    "C2": 0.12,
-    "A3": 7,
-    "B3": 85.50,
-    "C3": 0.18,
-    "A4": 25,
-    "B4": 20.00,
-    "C4": 0.08,
-    "A5": 12,
-    "B5": 45.75,
-    "C5": 0.25
+  "Assumptions": {
+    "B2": 0.05,
+    "B3": 0.03,
+    "B4": 1000000,
+    "B5": "2024-01-01"
+  },
+  "Data": {
+    "A2": "Product A",
+    "B2": 100,
+    "C2": 25.50,
+    "D2": true,
+    "A3": "Product B",
+    "B3": 200,
+    "C3": 35.75,
+    "D3": false
   }
 }
 ```
 
-## Running Conversion with Validation
-
-### Method 1: Convert and Validate in One Command
+#### Multiple Test Scenarios
+Create different input files for various scenarios:
 
 ```bash
-npm run cli -- convert \
-  --config validation-config.json \
-  --output-file generated-sheet.ts \
-  --validate \
-  --validation-input validation-input.json \
-  --validation-tolerance 1e-10 \
-  --verbose
-```
-
-### Method 2: Convert First, Then Validate Separately
-
-#### Step 1: Generate the code
-```bash
-npm run cli -- convert \
-  --config validation-config.json \
-  --output-file generated-sheet.ts \
-  --verbose
-```
-
-#### Step 2: Run validation
-```bash
+# Scenario 1: Best case
 npm run cli -- validate \
-  --config validation-config.json \
-  --generated-file generated-sheet.ts \
-  --input-data validation-input.json \
+  --config config.json \
+  --generated-file my-model.ts \
+  --input-data best-case-input.json \
+  --output best-case-report.md
+
+# Scenario 2: Worst case  
+npm run cli -- validate \
+  --config config.json \
+  --generated-file my-model.ts \
+  --input-data worst-case-input.json \
+  --output worst-case-report.md
+
+# Scenario 3: Average case
+npm run cli -- validate \
+  --config config.json \
+  --generated-file my-model.ts \
+  --input-data average-case-input.json \
+  --output average-case-report.md
+```
+
+### Validating Against Different Sheet Versions
+
+A powerful feature is validating your generated code against different versions or copies of your sheet. This is useful for:
+- Testing against sheets with different data
+- Validating against backup copies
+- Comparing results across different scenarios
+
+#### Method 1: Using Different Sheet URLs for Validation
+
+Create separate configuration files for each validation scenario:
+
+`config-production.json`:
+```json
+{
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/PRODUCTION_SHEET_ID/edit",
+  "inputTabs": ["Inputs"],
+  "outputTabs": ["Outputs"],
+  "outputLanguage": "typescript"
+}
+```
+
+`config-test.json`:
+```json
+{
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/TEST_SHEET_ID/edit",
+  "inputTabs": ["Inputs"],
+  "outputTabs": ["Outputs"],
+  "outputLanguage": "typescript"
+}
+```
+
+Then validate against different sheets:
+```bash
+# Generate code from production sheet
+npm run cli -- convert \
+  --config config-production.json \
+  --output-file production-model.ts
+
+# Validate against test sheet with different data
+npm run cli -- validate \
+  --config config-test.json \
+  --generated-file production-model.ts \
+  --input-data test-data.json \
+  --output test-validation-report.md
+```
+
+#### Method 2: Creating Validation Test Sheets
+
+1. **Make a copy of your original sheet**:
+   - In Google Sheets: File → Make a copy
+   - Name it "MySheet - Validation Test 1"
+
+2. **Modify the test data in the input tabs**:
+   - Change values to test edge cases
+   - Add extreme values (0, negative, very large)
+   - Test with empty cells
+
+3. **Create a validation config for the test sheet**:
+
+`validation-test-config.json`:
+```json
+{
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/TEST_COPY_ID/edit",
+  "inputTabs": ["Inputs"],
+  "outputTabs": ["Outputs"],
+  "outputLanguage": "typescript"
+}
+```
+
+4. **Run validation against the test sheet**:
+```bash
+# Validate your generated code against the test sheet
+npm run cli -- validate \
+  --config validation-test-config.json \
+  --generated-file my-model.ts \
+  --input-data edge-case-inputs.json \
   --tolerance 1e-10 \
-  --output validation-report.md \
+  --output edge-case-validation.md \
   --verbose
 ```
 
-### Method 3: Multiple Snapshots (for Time-Based Functions)
+### Advanced Validation Techniques
 
-For sheets with time-based functions (TODAY, NOW, RAND), use multiple snapshots:
+#### Capturing and Storing Validation Data
+
+The `capture-validation` command allows you to capture snapshots of your sheet's current state and store them for later validation. This is extremely useful for:
+- Building a test suite with multiple scenarios
+- Testing against historical data
+- Validating across different environments
+- Creating regression tests
+
+##### Capturing Validation Snapshots
+
+```bash
+# Capture current state of the sheet defined in config.json
+npm run cli -- capture-validation \
+  --config config.json \
+  --verbose
+
+# Capture from a different sheet URL (but using same tab structure)
+npm run cli -- capture-validation \
+  --config config.json \
+  --url "https://docs.google.com/spreadsheets/d/DIFFERENT_SHEET_ID/edit" \
+  --name "test-scenario-1"
+
+# Capture multiple scenarios
+npm run cli -- capture-validation \
+  --config config.json \
+  --url "https://docs.google.com/spreadsheets/d/SCENARIO_1_ID/edit" \
+  --name "best-case"
+
+npm run cli -- capture-validation \
+  --config config.json \
+  --url "https://docs.google.com/spreadsheets/d/SCENARIO_2_ID/edit" \
+  --name "worst-case"
+
+npm run cli -- capture-validation \
+  --config config.json \
+  --url "https://docs.google.com/spreadsheets/d/SCENARIO_3_ID/edit" \
+  --name "average-case"
+```
+
+Captured data is stored in `.validation/${configName}/${name-or-uuid}.json` with:
+- Input tab values (automatically used as test inputs)
+- Output tab values (used for validation)
+- Timestamp and source URL for reference
+
+##### Using Stored Validation Snapshots
+
+When you run the `validate` command, it automatically checks for stored snapshots:
+
+```bash
+# This will automatically find and use ALL stored snapshots in .validation/config/
+npm run cli -- validate \
+  --config config.json \
+  --generated-file my-model.ts \
+  --tolerance 1e-10 \
+  --verbose
+```
+
+The validation will:
+1. Check `.validation/${configName}/` directory for snapshots
+2. Load each snapshot with its input and output data
+3. Run your generated code with each snapshot's inputs
+4. Compare outputs against each snapshot's expected values
+5. Report results for all snapshots
+
+##### Building a Comprehensive Test Suite
+
+```bash
+#!/bin/bash
+# capture-test-suite.sh
+
+# Configuration file to use
+CONFIG="production-config.json"
+
+# Capture baseline from production
+npm run cli -- capture-validation \
+  --config $CONFIG \
+  --name "baseline-2024-01"
+
+# Capture edge cases from test sheets
+npm run cli -- capture-validation \
+  --config $CONFIG \
+  --url "https://docs.google.com/spreadsheets/d/EMPTY_VALUES_ID/edit" \
+  --name "empty-values"
+
+npm run cli -- capture-validation \
+  --config $CONFIG \
+  --url "https://docs.google.com/spreadsheets/d/MAX_VALUES_ID/edit" \
+  --name "maximum-values"
+
+npm run cli -- capture-validation \
+  --config $CONFIG \
+  --url "https://docs.google.com/spreadsheets/d/NEGATIVE_ID/edit" \
+  --name "negative-values"
+
+npm run cli -- capture-validation \
+  --config $CONFIG \
+  --url "https://docs.google.com/spreadsheets/d/DECIMAL_ID/edit" \
+  --name "decimal-precision"
+
+echo "Test suite captured in .validation/production-config/"
+ls -la .validation/production-config/
+```
+
+##### Continuous Validation Workflow
+
+```bash
+# Daily validation script
+#!/bin/bash
+
+# Step 1: Generate fresh code from production sheet
+npm run cli -- convert \
+  --config production.json \
+  --output-file generated-model.ts
+
+# Step 2: Capture today's production data
+npm run cli -- capture-validation \
+  --config production.json \
+  --name "production-$(date +%Y%m%d)"
+
+# Step 3: Validate against ALL stored test cases
+npm run cli -- validate \
+  --config production.json \
+  --generated-file generated-model.ts \
+  --output "reports/validation-$(date +%Y%m%d).md"
+
+# Step 4: Check validation results
+if [ $? -eq 0 ]; then
+  echo "✅ All validations passed!"
+else
+  echo "❌ Validation failed - check reports for details"
+  exit 1
+fi
+```
+
+#### Validating with Multiple Snapshots (Live Fetching)
+For sheets with volatile functions (TODAY, NOW, RAND), take multiple live snapshots:
 
 ```bash
 npm run cli -- validate \
-  --config validation-config.json \
-  --generated-file generated-sheet.ts \
-  --input-data validation-input.json \
-  --snapshots 3 \
+  --config config.json \
+  --generated-file my-model.ts \
+  --input-data test-input.json \
+  --snapshots 5 \
   --delay 2000 \
-  --output validation-report-snapshots.md \
-  --verbose
+  --output time-based-validation.md
 ```
 
 This will:
-1. Fetch actual values from Google Sheets
+1. Fetch values from Google Sheets
 2. Wait 2 seconds
-3. Fetch again (3 times total)
+3. Fetch again (5 times total)
 4. Validate generated code against each snapshot
+5. Report any inconsistencies
 
-## Creating Comprehensive Test Scenarios
+#### Batch Validation Script
+Create a script to validate multiple scenarios:
 
-### Test Scenario 1: Financial Calculations
-```javascript
-// In Google Sheets "Financial" tab
-A1: "Principal"     B1: 10000
-A2: "Rate"          B2: 0.05
-A3: "Years"         B3: 5
-A4: "Monthly Pmt"   B4: =PMT(B2/12,B3*12,-B1)
-A5: "Total Paid"    B5: =B4*B3*12
-A6: "Interest"      B6: =B5+B1
+`validate-all.sh`:
+```bash
+#!/bin/bash
+
+# Generate the code once
+npm run cli -- convert \
+  --config production-config.json \
+  --output-file generated-model.ts
+
+# Validate against multiple test scenarios
+echo "Validating Scenario 1: Empty inputs..."
+npm run cli -- validate \
+  --config test-config-1.json \
+  --generated-file generated-model.ts \
+  --input-data empty-inputs.json \
+  --output reports/empty-validation.md
+
+echo "Validating Scenario 2: Maximum values..."
+npm run cli -- validate \
+  --config test-config-2.json \
+  --generated-file generated-model.ts \
+  --input-data max-inputs.json \
+  --output reports/max-validation.md
+
+echo "Validating Scenario 3: Negative values..."
+npm run cli -- validate \
+  --config test-config-3.json \
+  --generated-file generated-model.ts \
+  --input-data negative-inputs.json \
+  --output reports/negative-validation.md
+
+# Summarize results
+echo "Validation Complete. Check reports/ directory for details."
 ```
 
-### Test Scenario 2: Data Validation Rules
-```javascript
-// Add validation rules to your sheet
-A1: =IF(ISBLANK(Input!A2),"Missing","Present")
-A2: =IF(ISNUMBER(Input!B2),"Valid Price","Invalid")
-A3: =IF(AND(Input!C2>=0,Input!C2<=1),"Valid Discount","Invalid")
-```
+### Understanding Validation Output
 
-### Test Scenario 3: Cross-Sheet References
-```javascript
-// Create formulas that reference multiple sheets
-=SUMIF(Input!A:A,">10",Input!B:B)
-=AVERAGEIF(Calculations!D:D,">0")
-=COUNTIFS(Input!A:A,">5",Input!B:B,"<100")
+#### Successful Validation
 ```
+🔍 Validating generated code against actual data...
+📊 Fetching validation data from Google Sheets...
+✅ Sheet "Calculations" values fetched: 245 cells
+✅ Sheet "Summary" values fetched: 89 cells
 
-## Interpreting Results
-
-### Successful Validation Output
-```
 ✅ VALIDATION PASSED
-Accuracy: 100.00% (45/45 cells)
+Accuracy: 100.00% (334/334 cells)
 ```
 
-### Failed Validation Output
+#### Failed Validation with Details
 ```
+🔍 Validating generated code against actual data...
+📊 Fetching validation data from Google Sheets...
+✅ Sheet "Calculations" values fetched: 245 cells
+✅ Sheet "Summary" values fetched: 89 cells
+
 ❌ VALIDATION FAILED
-Accuracy: 95.56% (43/45 cells)
+Accuracy: 98.80% (330/334 cells)
 
 First 10 mismatches:
-  - Validation!B10: expected 44330.98, got 44330.97
-  - Validation!B11: expected 0.00833333, got 0.008333
+  - Calculations!B15: expected 1234567.89, got 1234567.88
+  - Calculations!C20: expected 0.05, got 0.0499999
+  - Summary!D5: expected "Total: $1,000", got "Total: $1000"
+  - Summary!E10: expected null, got 0
 ```
 
-### Understanding Validation Report
+#### Validation Report File
+The generated markdown report includes:
+- **Summary statistics**: Total cells validated, accuracy percentage
+- **Detailed mismatches**: Every cell that doesn't match, with expected vs actual values
+- **Tolerance information**: The numeric tolerance used for comparisons
+- **Timestamp**: When the validation was performed
+- **Configuration**: Which sheets and tabs were validated
 
-The generated `validation-report.md` contains:
-- **Summary**: Overall pass/fail status
-- **Accuracy**: Percentage of cells that match
-- **Mismatches**: Detailed list of cells with different values
-- **Tolerance**: Applied numeric tolerance for comparisons
-
-## Validation Options Explained
+### Validation Options Reference
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--validate` | Enable validation after conversion | false | `--validate` |
-| `--validation-input` | JSON file with input data | none | `--validation-input data.json` |
-| `--validation-tolerance` | Numeric tolerance for float comparison | 1e-10 | `--validation-tolerance 0.001` |
-| `--validation-snapshots` | Number of snapshots to take | 1 | `--validation-snapshots 5` |
-| `--validation-delay` | Delay between snapshots (ms) | 1000 | `--validation-delay 2000` |
+| `--config` | Configuration file with sheet URL and tabs | Required | `--config config.json` |
+| `--generated-file` | Path to generated code file to validate | Required | `--generated-file model.ts` |
+| `--input-data` | JSON file with input cell values | {} | `--input-data test.json` |
+| `--tolerance` | Numeric tolerance for float comparison | 1e-10 | `--tolerance 0.0001` |
+| `--snapshots` | Number of validation snapshots | 1 | `--snapshots 5` |
+| `--delay` | Delay between snapshots (ms) | 1000 | `--delay 2000` |
+| `--output` | Output validation report to file | Console | `--output report.md` |
+| `--verbose` | Show detailed progress | false | `--verbose` |
 
-## Troubleshooting
+### Validation Best Practices
 
-### Common Issues and Solutions
+1. **Create a validation test suite** with multiple input scenarios:
+   - Empty/null values
+   - Boundary values (min/max)
+   - Typical values
+   - Error-inducing values
 
-#### 1. Validation Fails Due to Rounding
-**Problem**: Small differences in floating-point calculations
-**Solution**: Increase tolerance
-```bash
---validation-tolerance 0.0001
-```
+2. **Use different sheets for different test cases**:
+   - Production sheet (read-only)
+   - Test sheet with edge cases
+   - Validation sheet with known outputs
 
-#### 2. Time-Based Functions Don't Match
-**Problem**: TODAY() or NOW() values change between fetch and execution
-**Solution**: Use multiple snapshots or mock these functions in tests
+3. **Automate validation in CI/CD**:
+   ```yaml
+   # .github/workflows/validate.yml
+   name: Validate Sheet Conversion
+   on: [push, pull_request]
+   jobs:
+     validate:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v2
+         - uses: actions/setup-node@v2
+         - run: npm install
+         - run: |
+             # Generate code from production sheet
+             npm run cli -- convert \
+               --config config.json \
+               --output-file generated.ts
+             
+             # Validate against multiple test scenarios
+             npm run cli -- validate \
+               --config test-config.json \
+               --generated-file generated.ts \
+               --input-data test-cases/case1.json \
+               --output reports/case1.md
+             
+             npm run cli -- validate \
+               --config test-config.json \
+               --generated-file generated.ts \
+               --input-data test-cases/case2.json \
+               --output reports/case2.md
+   ```
 
-#### 3. Missing Cell References
-**Problem**: "Cell not found in validation data"
-**Solution**: Ensure all referenced cells exist in your Google Sheet
+4. **Monitor validation accuracy over time**:
+   - Save validation reports with timestamps
+   - Track accuracy trends
+   - Alert on accuracy drops below threshold
 
-#### 4. Authentication Errors
-**Problem**: "Failed to authenticate"
+## Troubleshooting Common Issues
+
+### "Formula contains unsupported function: XLOOKUP"
+**Solution**: The converter doesn't support XLOOKUP yet. Consider replacing with VLOOKUP or INDEX/MATCH.
+
+### "Authentication failed"
 **Solution**: 
-- Check `credentials.json` exists
-- For service accounts, ensure sheet is shared with the service account email
-- For OAuth, ensure you complete the browser authentication
+- Ensure `credentials.json` exists in the project root
+- If using service account, verify the sheet is shared with the service account email
+- Try re-running `npm run cli -- setup`
 
-#### 5. Formula Not Supported
-**Problem**: "Failed to parse formula"
-**Solution**: Check [supported formulas list](README.md#supported-formulas) or simplify complex formulas
-
-### Debugging Tips
-
-1. **Use Verbose Mode**: Add `--verbose` to see detailed progress
-2. **Check Generated Code**: Review the generated TypeScript/Python file
-3. **Test with Simple Data First**: Start with basic formulas before complex ones
-4. **Validate Incrementally**: Test one sheet at a time
-
-## Best Practices
-
-1. **Organize Test Cases**: Group similar formulas together
-2. **Use Named Ranges**: Makes formulas more readable and maintainable
-3. **Document Complex Formulas**: Add comments in adjacent cells
-4. **Test Edge Cases**: Include zero, negative, and empty values
-5. **Version Control**: Keep your config and test data in git
-6. **Regular Validation**: Run validation after any formula changes
-
-## Example Full Workflow
-
+### Validation shows small differences in decimal values
+**Solution**: Increase the tolerance for floating-point comparisons:
 ```bash
-# 1. Setup credentials
-npm run cli -- setup
-
-# 2. Create your Google Sheet with test cases (as shown above)
-
-# 3. Create configuration
-cat > my-validation-config.json << EOF
-{
-  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/YOUR_ID/edit",
-  "inputTabs": ["Input"],
-  "outputTabs": ["Calculations", "Validation"],
-  "outputLanguage": "typescript"
-}
-EOF
-
-# 4. Create test input data
-cat > test-input.json << EOF
-{
-  "Input": {
-    "A2": 100, "B2": 25.50, "C2": 0.1,
-    "A3": 50,  "B3": 75.00, "C3": 0.15,
-    "A4": 75,  "B4": 30.25, "C4": 0.05,
-    "A5": 25,  "B5": 99.99, "C5": 0.2
-  }
-}
-EOF
-
-# 5. Run conversion with validation
-npm run cli -- convert \
-  --config my-validation-config.json \
-  --output-file my-sheet.ts \
-  --validate \
-  --validation-input test-input.json \
-  --verbose
-
-# 6. Check the results
-cat validation-report.md
+--validation-tolerance 0.0001  # Instead of default 1e-10
 ```
 
-## Advanced Validation Scenarios
-
-### Validating Python Output
+### "Sheet not found: SheetName"
+**Solution**: Check the exact spelling and case of your sheet names. Use quotes if they contain spaces:
 ```bash
-npm run cli -- convert \
-  --config validation-config.json \
-  --output-file generated-sheet.py \
-  --language python \
-  --validate \
-  --validation-input validation-input.json
+--input-tabs "Sheet 1,Sheet 2"
 ```
 
-### Continuous Validation in CI/CD
+### Formulas with volatile functions (TODAY, NOW, RAND) fail validation
+**Solution**: Use multiple snapshots for time-based validation:
+```bash
+npm run cli -- validate \
+  --config config.json \
+  --generated-file my-model.ts \
+  --snapshots 3 \
+  --delay 2000
+```
+
+### Generated code doesn't compile
+**Solution**: 
+- Check for unsupported formulas in your sheet
+- Ensure all referenced sheets are included in either inputTabs or outputTabs
+- Review the generated code for syntax errors
+
+## Advanced Usage
+
+### Handling Complex Sheets
+
+For sheets with 10+ tabs and thousands of formulas:
+
+1. **Start with a subset**: Test with a few tabs first
+2. **Use verbose mode**: Add `--verbose` to see detailed progress
+3. **Validate incrementally**: Validate one output tab at a time
+
+### Optimizing Performance
+
+For large sheets with many formulas:
+
+```bash
+# Generate optimized code with dependency analysis
+npm run cli -- convert \
+  --config config.json \
+  --output-file optimized-model.ts \
+  --optimize
+```
+
+### Continuous Integration
+
+Add to your CI/CD pipeline to ensure changes don't break the conversion:
+
 ```yaml
-# .github/workflows/validate.yml
-name: Validate Conversions
+# .github/workflows/validate-sheet.yml
+name: Validate Sheet Conversion
 on: [push]
 jobs:
   validate:
@@ -363,18 +679,113 @@ jobs:
       - uses: actions/setup-node@v2
       - run: npm install
       - run: |
-          npm run cli -- validate \
-            --config validation-config.json \
-            --generated-file generated-sheet.ts \
-            --input-data test-input.json \
-            --tolerance 1e-10
+          npm run cli -- convert \
+            --config config.json \
+            --output-file generated.ts \
+            --validate \
+            --validation-input test-data.json
+```
+
+### Working with Protected Sheets
+
+If your sheet has protected ranges or requires specific permissions:
+1. Ensure the service account has the necessary permissions
+2. Use OAuth2 authentication if you need user-level access
+3. Consider making a copy of the sheet for conversion purposes
+
+### Handling External Data Sources
+
+If your sheet uses `IMPORTRANGE`, `IMPORTDATA`, or other external data:
+1. Create local copies of external data in input tabs
+2. Replace `IMPORTRANGE` formulas with direct references
+3. Or use the `--fetch-external` flag (if supported)
+
+## Best Practices
+
+1. **Version Control**: Keep your config files and test data in git
+2. **Document Dependencies**: Note which tabs depend on which inputs
+3. **Test Edge Cases**: Include zero, negative, and maximum values in test data
+4. **Regular Validation**: Re-validate after any significant sheet changes
+5. **Modular Approach**: Break complex sheets into logical groups of tabs
+
+## Examples
+
+### Example 1: Financial Model with Validation
+```bash
+# Generate code from production sheet
+npm run cli -- convert \
+  --url "https://docs.google.com/spreadsheets/d/PROD_ID/edit" \
+  --input-tabs "Assumptions,MarketData,Scenarios" \
+  --output-tabs "Projections,Valuation,Sensitivity" \
+  --output-file financial-model.ts
+
+# Validate against test sheet with edge cases
+npm run cli -- validate \
+  --config test-sheet-config.json \
+  --generated-file financial-model.ts \
+  --input-data edge-cases.json \
+  --tolerance 0.01 \
+  --output validation-report.md
+```
+
+### Example 2: Sales Dashboard with Multiple Validations
+```bash
+#!/bin/bash
+# validate-sales-dashboard.sh
+
+# Generate the dashboard code
+npm run cli -- convert \
+  --config sales-config.json \
+  --output-file sales-dashboard.py
+
+# Validate against Q1 data
+npm run cli -- validate \
+  --config q1-test-config.json \
+  --generated-file sales-dashboard.py \
+  --input-data q1-data.json \
+  --output reports/q1-validation.md
+
+# Validate against Q2 data
+npm run cli -- validate \
+  --config q2-test-config.json \
+  --generated-file sales-dashboard.py \
+  --input-data q2-data.json \
+  --output reports/q2-validation.md
+```
+
+### Example 3: Inventory System with Time-Based Validation
+```bash
+npm run cli -- convert \
+  --config inventory-config.json \
+  --output-file inventory-system.ts
+
+# Validate with multiple snapshots for NOW() functions
+npm run cli -- validate \
+  --config inventory-test-config.json \
+  --generated-file inventory-system.ts \
+  --input-data current-inventory.json \
+  --snapshots 5 \
+  --delay 3000 \
+  --tolerance 0.001 \
+  --output time-validation-report.md
 ```
 
 ## Getting Help
 
-- Check the [README](README.md) for general usage
-- Review [TODO.md](TODO.md) for feature status
-- Report issues on GitHub Issues
-- See example configurations in the `examples/` directory
+- **Documentation**: Check [README.md](README.md) for detailed feature documentation
+- **Supported Functions**: See the complete list of supported formulas
+- **Examples**: Look in the `examples/` directory for sample configurations
+- **Issues**: Report problems on GitHub Issues
+- **Feature Status**: Check [TODO.md](TODO.md) for upcoming features
 
-Remember: The validation system helps ensure your generated code produces the same results as your Google Sheets. Always validate after making changes to complex formulas!
+## Next Steps
+
+After successfully converting and validating your sheet:
+
+1. **Set up automated validation** to run on schedule
+2. **Create a test suite** with multiple validation scenarios
+3. **Monitor accuracy metrics** over time
+4. **Integrate validation into your CI/CD pipeline**
+5. **Document validation procedures** for your team
+
+Remember: Validation is your safety net. Always validate your generated code against known good data before using it in production!

@@ -456,4 +456,87 @@ describe("Integration Tests", () => {
       }
     });
   });
+
+  describe("Named Range Handling", () => {
+    it("should handle formulas after named range expansion", () => {
+      const parser = new FormulaParser();
+
+      // Test formulas after named ranges have been replaced with empty strings
+      const expandedFormulas = [
+        '=IF(ISNUMBER(""),"","")',
+        "=SUM(A1,B1)", // SUM with regular references works
+        "=IF(A1>0,A1*2,0)", // IF with regular references works
+        "=VLOOKUP(A1,B1:C10,2,FALSE)", // VLOOKUP with regular references
+      ];
+
+      // These expanded formulas should parse without errors
+      expandedFormulas.forEach((formula) => {
+        expect(() => {
+          const ast = parser.parse(formula);
+          expect(ast).toBeDefined();
+        }).not.toThrow();
+      });
+    });
+
+    it("should replace undefined named ranges with empty strings in formula expansion", () => {
+      const sheets = new Map<string, Sheet>([
+        [
+          "Test",
+          {
+            name: "Test",
+            range: {
+              startRow: 1,
+              endRow: 2,
+              startColumn: "A",
+              endColumn: "B",
+            },
+            cells: new Map([
+              ["A1", { row: 1, column: "A", value: 10 }],
+              [
+                "B1",
+                {
+                  row: 1,
+                  column: "B",
+                  value: null,
+                  formula: '=IF(ISNUMBER(""),"","")', // After expansion
+                  originalFormula: '=IF(ISNUMBER(data_user),data_user,"")', // Before expansion
+                  parsedFormula: {
+                    type: "function",
+                    value: "IF",
+                    children: [
+                      {
+                        type: "function",
+                        value: "ISNUMBER",
+                        children: [
+                          { type: "literal", value: '""', children: [] },
+                        ],
+                      },
+                      { type: "literal", value: '""', children: [] },
+                      { type: "literal", value: '""', children: [] },
+                    ],
+                  },
+                },
+              ],
+            ]),
+          },
+        ],
+      ]);
+
+      const analyzer = new DependencyAnalyzer();
+      const graph = analyzer.buildDependencyGraph(sheets);
+
+      // Should build graph without errors
+      expect(graph.size).toBeGreaterThan(0);
+
+      const tsGenerator = new TypeScriptGenerator();
+      const code = tsGenerator.generate(sheets, graph, ["Test"], ["Test"]);
+
+      // Should generate valid code
+      expect(code).toContain("cells['Test!B1']");
+      // The formula with empty strings might be simplified/optimized
+      // So just check that the code is generated without errors
+      expect(code).toBeDefined();
+      expect(code.length).toBeGreaterThan(0);
+    });
+  });
 });

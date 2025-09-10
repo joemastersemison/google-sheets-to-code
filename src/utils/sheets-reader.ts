@@ -104,6 +104,11 @@ export class GoogleSheetsReader {
         const name = namedRange.name || "";
         const range = namedRange.range;
 
+        if (!name) {
+          if (verbose) console.log(`  ⚠️  Skipping unnamed range`);
+          continue;
+        }
+
         if (range) {
           // Convert range to A1 notation
           const sheetId = range.sheetId;
@@ -135,9 +140,25 @@ export class GoogleSheetsReader {
             }
           }
 
-          namedRanges.set(name, a1Notation);
+          if (a1Notation && a1Notation.trim() !== "") {
+            namedRanges.set(name, a1Notation);
+            if (verbose)
+              console.log(`  ✅ Named range "${name}" -> ${a1Notation}`);
+          } else {
+            // Named range exists but has no valid range
+            namedRanges.set(name, "");
+            if (verbose)
+              console.log(
+                `  ⚠️  Named range "${name}" has no valid range (might be deleted)`
+              );
+          }
+        } else {
+          // Named range exists in metadata but has no range property
+          namedRanges.set(name, "");
           if (verbose)
-            console.log(`  ✅ Named range "${name}" -> ${a1Notation}`);
+            console.log(
+              `  ⚠️  Named range "${name}" exists but has no range defined`
+            );
         }
       }
     }
